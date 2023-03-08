@@ -24,35 +24,52 @@ class NativeImpl implements Native {
   factory NativeImpl.wasm(FutureOr<WasmModule> module) =>
       NativeImpl(module as ExternalLibrary);
   NativeImpl.raw(this._platform);
-  Future<Platform> platform({dynamic hint}) {
+  Future<void> openDoc({required String path, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(path);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_platform(port_),
-      parseSuccessData: _wire2api_platform,
-      constMeta: kPlatformConstMeta,
+      callFfi: (port_) => _platform.inner.wire_open_doc(port_, arg0),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kOpenDocConstMeta,
+      argValues: [path],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kOpenDocConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "open_doc",
+        argNames: ["path"],
+      );
+
+  Future<void> goNext({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_go_next(port_),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kGoNextConstMeta,
       argValues: [],
       hint: hint,
     ));
   }
 
-  FlutterRustBridgeTaskConstMeta get kPlatformConstMeta =>
+  FlutterRustBridgeTaskConstMeta get kGoNextConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
-        debugName: "platform",
+        debugName: "go_next",
         argNames: [],
       );
 
-  Future<bool> rustReleaseMode({dynamic hint}) {
+  Future<String> getContent({dynamic hint}) {
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_rust_release_mode(port_),
-      parseSuccessData: _wire2api_bool,
-      constMeta: kRustReleaseModeConstMeta,
+      callFfi: (port_) => _platform.inner.wire_get_content(port_),
+      parseSuccessData: _wire2api_String,
+      constMeta: kGetContentConstMeta,
       argValues: [],
       hint: hint,
     ));
   }
 
-  FlutterRustBridgeTaskConstMeta get kRustReleaseModeConstMeta =>
+  FlutterRustBridgeTaskConstMeta get kGetContentConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
-        debugName: "rust_release_mode",
+        debugName: "get_content",
         argNames: [],
       );
 
@@ -61,20 +78,29 @@ class NativeImpl implements Native {
   }
 // Section: wire2api
 
-  bool _wire2api_bool(dynamic raw) {
-    return raw as bool;
+  String _wire2api_String(dynamic raw) {
+    return raw as String;
   }
 
-  int _wire2api_i32(dynamic raw) {
+  int _wire2api_u8(dynamic raw) {
     return raw as int;
   }
 
-  Platform _wire2api_platform(dynamic raw) {
-    return Platform.values[raw];
+  Uint8List _wire2api_uint_8_list(dynamic raw) {
+    return raw as Uint8List;
+  }
+
+  void _wire2api_unit(dynamic raw) {
+    return;
   }
 }
 
 // Section: api2wire
+
+@protected
+int api2wire_u8(int raw) {
+  return raw;
+}
 
 // Section: finalizer
 
@@ -83,6 +109,17 @@ class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
 
 // Section: api2wire
 
+  @protected
+  ffi.Pointer<wire_uint_8_list> api2wire_String(String raw) {
+    return api2wire_uint_8_list(utf8.encoder.convert(raw));
+  }
+
+  @protected
+  ffi.Pointer<wire_uint_8_list> api2wire_uint_8_list(Uint8List raw) {
+    final ans = inner.new_uint_8_list_0(raw.length);
+    ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
+    return ans;
+  }
 // Section: finalizer
 
 // Section: api_fill_to_wire
@@ -183,33 +220,63 @@ class NativeWire implements FlutterRustBridgeWireBase {
   late final _init_frb_dart_api_dl = _init_frb_dart_api_dlPtr
       .asFunction<int Function(ffi.Pointer<ffi.Void>)>();
 
-  void wire_platform(
+  void wire_open_doc(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> path,
+  ) {
+    return _wire_open_doc(
+      port_,
+      path,
+    );
+  }
+
+  late final _wire_open_docPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_open_doc');
+  late final _wire_open_doc = _wire_open_docPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+
+  void wire_go_next(
     int port_,
   ) {
-    return _wire_platform(
+    return _wire_go_next(
       port_,
     );
   }
 
-  late final _wire_platformPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
-          'wire_platform');
-  late final _wire_platform =
-      _wire_platformPtr.asFunction<void Function(int)>();
+  late final _wire_go_nextPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>('wire_go_next');
+  late final _wire_go_next = _wire_go_nextPtr.asFunction<void Function(int)>();
 
-  void wire_rust_release_mode(
+  void wire_get_content(
     int port_,
   ) {
-    return _wire_rust_release_mode(
+    return _wire_get_content(
       port_,
     );
   }
 
-  late final _wire_rust_release_modePtr =
+  late final _wire_get_contentPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
-          'wire_rust_release_mode');
-  late final _wire_rust_release_mode =
-      _wire_rust_release_modePtr.asFunction<void Function(int)>();
+          'wire_get_content');
+  late final _wire_get_content =
+      _wire_get_contentPtr.asFunction<void Function(int)>();
+
+  ffi.Pointer<wire_uint_8_list> new_uint_8_list_0(
+    int len,
+  ) {
+    return _new_uint_8_list_0(
+      len,
+    );
+  }
+
+  late final _new_uint_8_list_0Ptr = _lookup<
+      ffi.NativeFunction<
+          ffi.Pointer<wire_uint_8_list> Function(
+              ffi.Int32)>>('new_uint_8_list_0');
+  late final _new_uint_8_list_0 = _new_uint_8_list_0Ptr
+      .asFunction<ffi.Pointer<wire_uint_8_list> Function(int)>();
 
   void free_WireSyncReturn(
     WireSyncReturn ptr,
@@ -227,6 +294,13 @@ class NativeWire implements FlutterRustBridgeWireBase {
 }
 
 class _Dart_Handle extends ffi.Opaque {}
+
+class wire_uint_8_list extends ffi.Struct {
+  external ffi.Pointer<ffi.Uint8> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
 
 typedef DartPostCObjectFnType = ffi.Pointer<
     ffi.NativeFunction<ffi.Bool Function(DartPort, ffi.Pointer<ffi.Void>)>>;

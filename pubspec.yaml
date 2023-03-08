@@ -37,6 +37,9 @@ dependencies:
   ffi: ^2.0.1
   flutter_rust_bridge: ^1.45.0
   meta: ^1.8.0
+  flutter_html: ^2.2.1
+  dyn_mouse_scroll: ^1.0.7
+  google_fonts: ^4.0.3
 
 dev_dependencies:
   flutter_test:

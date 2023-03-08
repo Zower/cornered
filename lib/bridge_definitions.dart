@@ -8,22 +8,15 @@ import 'package:meta/meta.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 
 abstract class Native {
-  Future<Platform> platform({dynamic hint});
+  Future<void> openDoc({required String path, dynamic hint});
 
-  FlutterRustBridgeTaskConstMeta get kPlatformConstMeta;
+  FlutterRustBridgeTaskConstMeta get kOpenDocConstMeta;
 
-  Future<bool> rustReleaseMode({dynamic hint});
+  Future<void> goNext({dynamic hint});
 
-  FlutterRustBridgeTaskConstMeta get kRustReleaseModeConstMeta;
-}
+  FlutterRustBridgeTaskConstMeta get kGoNextConstMeta;
 
-enum Platform {
-  Unknown,
-  Android,
-  Ios,
-  Windows,
-  Unix,
-  MacIntel,
-  MacApple,
-  Wasm,
+  Future<String> getContent({dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetContentConstMeta;
 }
