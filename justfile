@@ -1,3 +1,5 @@
+set shell := ["nu.exe", "-c"]
+
 default: gen lint
 
 gen:
@@ -11,7 +13,7 @@ gen:
     cp ios/Runner/bridge_generated.h macos/Runner/bridge_generated.h
 
 lint:
-    cd native && cargo fmt
+    cd native; cargo fmt
     dart format .
 
 clean:

@@ -16,6 +16,21 @@ pub extern "C" fn wire_get_content(port_: i64) {
     wire_get_content_impl(port_)
 }
 
+#[no_mangle]
+pub extern "C" fn wire_auth(port_: i64) {
+    wire_auth_impl(port_)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_poll(port_: i64) {
+    wire_poll_impl(port_)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_sync2(port_: i64, path: *mut wire_uint_8_list) {
+    wire_sync2_impl(port_, path)
+}
+
 // Section: allocate functions
 
 #[no_mangle]

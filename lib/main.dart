@@ -1,8 +1,8 @@
+import 'package:cornered/smooth_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:dyn_mouse_scroll/dyn_mouse_scroll.dart';
-import 'package:flutter_rust_bridge_template/smooth_scroll.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'ffi.dart' if (dart.library.html) 'ffi_web.dart';
 
 void main() {
@@ -50,11 +50,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
 
-    api
-        .openDoc(
-            path:
-                "D:\\Downloads\\(The Wheel of Time 13) Jordan, Robert - Towers of Midnight (1).epub")
-        .then((_) => _setContent());
+    api.openDoc(path: "D:\\Downloads\\(The Wheel of Time 13) Jordan, Robert - Towers of Midnight (1).epub").then((_) => _setContent());
   }
 
   Future<void> _setContent() async {
@@ -83,6 +79,43 @@ class _MyHomePageState extends State<MyHomePage> {
             },
             child: Text('go next'),
           ),
+          TextButton(
+            onPressed: () async {
+              final userCode = await api.auth();
+
+              if (!mounted) return;
+
+              final fut = api.poll();
+
+              await showDialog<void>(
+                context: context,
+                barrierDismissible: false, // user must tap button!
+                builder: (BuildContext context) {
+                  fut.then((_) => Navigator.of(context).pop());
+
+                  return AlertDialog(
+                    title: const Text('Code'),
+                    content: SingleChildScrollView(
+                      child: ListBody(
+                        children: [
+                          SelectableText('userCode: $userCode'),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            child: Text('sync'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // api.goPrev().then((_) => _setContent());
+              await api.sync2(path: "D:\\Downloads\\(The Wheel of Time 13) Jordan, Robert - Towers of Midnight (1).epub");
+              debugPrint('sync2 done');
+            },
+            child: Text('sync 2'),
+          ),
           Container(
             color: const Color(0xfffbf0d9),
             child: DefaultTextStyle(
@@ -90,34 +123,52 @@ class _MyHomePageState extends State<MyHomePage> {
                 fontSize: 22,
                 height: 1.5,
               ),
-              child: Html(
-                data: _currentContent!,
-                style: {
-                  "p": Style.fromTextStyle(GoogleFonts.ebGaramond()
-                      .copyWith(fontSize: 20, fontWeight: FontWeight.w300)),
-                  // "p": Style(
-                  //   // margin: EdgeInsets.symmetric(),
-                  //   fontSize: FontSize(22),
-                  //   fontFamily:
-                  //   // display: Display.BLOCK,
-                  // ),
+              child: SelectionArea(
+                onSelectionChanged: (selection) {
+                  debugPrint(selection?.plainText.toString());
                 },
-                customRender: {
-                  "svg": (context, element) {
-                    debugPrint(context.toString());
-                    debugPrint(element.toString());
+                child: Html(
+                  data: _currentContent!,
+                  style: {
+                    "p": Style.fromTextStyle(
+                      GoogleFonts.ebGaramond().copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ).merge(
+                      Style(
+                        textAlign: TextAlign.justify,
+                      ),
+                    ),
+                    "html": Style(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.of(context).size.width / 3,
+                      ),
+                    ),
+                    // "p": Style(
+                    //   // margin: EdgeInsets.symmetric(),
+                    //   fontSize: FontSize(22),
+                    //   fontFamily:
+                    //   // display: Display.BLOCK,
+                    // ),
+                  },
+                  customRender: {
+                    "svg": (context, element) {
+                      debugPrint(context.toString());
+                      debugPrint(element.toString());
 
-                    return Container(height: 30, width: 30, color: Colors.red);
-                  }
-                },
-                customImageRenders: {
-                  (context, element) {
-                    debugPrint(context.toString());
-                    debugPrint(element.toString());
+                      return Container(height: 30, width: 30, color: Colors.red);
+                    }
+                  },
+                  customImageRenders: {
+                    (context, element) {
+                      debugPrint(context.toString());
+                      debugPrint(element.toString());
 
-                    return true;
-                  }: (context, ctx, element) => Container()
-                },
+                      return true;
+                    }: (context, ctx, element) => Container()
+                  },
+                ),
               ),
             ),
           ),

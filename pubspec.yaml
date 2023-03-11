@@ -1,4 +1,4 @@
-name: flutter_rust_bridge_template
+name: cornered
 description: A new Flutter project.
 
 # The following line prevents the package from being accidentally published to
@@ -38,7 +38,6 @@ dependencies:
   flutter_rust_bridge: ^1.45.0
   meta: ^1.8.0
   flutter_html: ^2.2.1
-  dyn_mouse_scroll: ^1.0.7
   google_fonts: ^4.0.3
 
 dev_dependencies:
