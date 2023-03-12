@@ -7,9 +7,151 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
-import 'bridge_generated.dart';
-export 'bridge_generated.dart';
+
+import 'dart:convert';
+import 'dart:async';
+import 'package:meta/meta.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
+
 import 'dart:ffi' as ffi;
+
+class NativeImpl implements Native {
+  final NativePlatform _platform;
+  factory NativeImpl(ExternalLibrary dylib) =>
+      NativeImpl.raw(NativePlatform(dylib));
+
+  /// Only valid on web/WASM platforms.
+  factory NativeImpl.wasm(FutureOr<WasmModule> module) =>
+      NativeImpl(module as ExternalLibrary);
+  NativeImpl.raw(this._platform);
+  Future<void> openDoc({required String path, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(path);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_open_doc(port_, arg0),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kOpenDocConstMeta,
+      argValues: [path],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kOpenDocConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "open_doc",
+        argNames: ["path"],
+      );
+
+  Future<void> goNext({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_go_next(port_),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kGoNextConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGoNextConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "go_next",
+        argNames: [],
+      );
+
+  Future<String> getContent({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_get_content(port_),
+      parseSuccessData: _wire2api_String,
+      constMeta: kGetContentConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetContentConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_content",
+        argNames: [],
+      );
+
+  Future<String> auth({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_auth(port_),
+      parseSuccessData: _wire2api_String,
+      constMeta: kAuthConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kAuthConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "auth",
+        argNames: [],
+      );
+
+  Future<void> poll({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_poll(port_),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kPollConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kPollConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "poll",
+        argNames: [],
+      );
+
+  Future<void> sync2({required String path, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(path);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_sync2(port_, arg0),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kSync2ConstMeta,
+      argValues: [path],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kSync2ConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "sync2",
+        argNames: ["path"],
+      );
+
+  void dispose() {
+    _platform.dispose();
+  }
+// Section: wire2api
+
+  String _wire2api_String(dynamic raw) {
+    return raw as String;
+  }
+
+  int _wire2api_u8(dynamic raw) {
+    return raw as int;
+  }
+
+  Uint8List _wire2api_uint_8_list(dynamic raw) {
+    return raw as Uint8List;
+  }
+
+  void _wire2api_unit(dynamic raw) {
+    return;
+  }
+}
+
+// Section: api2wire
+
+@protected
+int api2wire_u8(int raw) {
+  return raw;
+}
+
+// Section: finalizer
 
 class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
   NativePlatform(ffi.DynamicLibrary dylib) : super(NativeWire(dylib));

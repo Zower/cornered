@@ -2,12 +2,7 @@
 // When adding new code to your project, note that only items used
 // here will be transformed to their Dart equivalents.
 
-use std::{
-    fs::File,
-    io::{BufReader, Write},
-    path::Path,
-    time::Duration,
-};
+use std::{fs::File, io::BufReader, time::Duration};
 
 use lazy_static::lazy_static;
 
@@ -22,8 +17,7 @@ lazy_static! {
 
 use epub::doc::EpubDoc;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
-use ureq::serde_json::Value;
+use serde::Deserialize;
 
 pub fn open_doc(path: String) {
     // let file = File::open(path.into()).unwrap();
@@ -103,6 +97,8 @@ pub fn poll() {
 }
 
 pub fn sync2(path: String) {
+    #[allow(deprecated)]
+    let x = base64::encode(std::fs::read(path).unwrap());
     let response = ureq::put("https://api.github.com/repos/zower/cornered/contents/book.epub")
         .set(
             "Authorization",
@@ -111,7 +107,7 @@ pub fn sync2(path: String) {
         .set("accept", "application/vnd.github+json")
         .send_json(ureq::json!({
             "message": "test",
-            "content": base64::encode(std::fs::read(path).unwrap())
+            "content": x
         }))
         .unwrap()
         .into_string()
@@ -124,8 +120,8 @@ pub fn sync2(path: String) {
 struct DeviceCode {
     device_code: String,
     user_code: String,
-    verification_uri: String,
-    expires_in: u64,
+    // verification_uri: String,
+    // expires_in: u64,
     interval: u64,
 }
 

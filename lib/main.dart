@@ -1,9 +1,10 @@
 import 'package:cornered/smooth_scroll.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'ffi.dart' if (dart.library.html) 'ffi_web.dart';
+import 'gen/ffi.dart' if (dart.library.html) 'ffi_web.dart';
 
 void main() {
   runApp(const MyApp());
@@ -45,12 +46,25 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String? _currentContent;
+  FilePickerResult? _result;
 
   @override
   void initState() {
     super.initState();
 
-    api.openDoc(path: "D:\\Downloads\\(The Wheel of Time 13) Jordan, Robert - Towers of Midnight (1).epub").then((_) => _setContent());
+    _do();
+  }
+
+  void _do() async {
+    final result = await FilePicker.platform.pickFiles();
+
+    _result = result;
+
+    api
+        // path:
+        //     "D:\\Downloads\\(The Wheel of Time 13) Jordan, Robert - Towers of Midnight (1).epub")
+        .openDoc(path: result!.files.single.path!)
+        .then((_) => _setContent());
   }
 
   Future<void> _setContent() async {
@@ -111,7 +125,8 @@ class _MyHomePageState extends State<MyHomePage> {
           TextButton(
             onPressed: () async {
               // api.goPrev().then((_) => _setContent());
-              await api.sync2(path: "D:\\Downloads\\(The Wheel of Time 13) Jordan, Robert - Towers of Midnight (1).epub");
+              // await api.sync2(path: "D:\\Downloads\\(The Wheel of Time 13) Jordan, Robert - Towers of Midnight (1).epub");
+              await api.sync2(path: _result!.files.single.path!);
               debugPrint('sync2 done');
             },
             child: Text('sync 2'),
@@ -157,7 +172,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       debugPrint(context.toString());
                       debugPrint(element.toString());
 
-                      return Container(height: 30, width: 30, color: Colors.red);
+                      return Container(
+                          height: 30, width: 30, color: Colors.red);
                     }
                   },
                   customImageRenders: {
