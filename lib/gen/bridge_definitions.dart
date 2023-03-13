@@ -16,6 +16,10 @@ abstract class Native {
 
   FlutterRustBridgeTaskConstMeta get kGoNextConstMeta;
 
+  Future<void> goPrev({dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGoPrevConstMeta;
+
   Future<String> getContent({dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGetContentConstMeta;
@@ -31,4 +35,50 @@ abstract class Native {
   Future<void> sync2({required String path, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kSync2ConstMeta;
+
+  Future<Database> initDb({required String path, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kInitDbConstMeta;
+
+  Future<void> clearDb({required String path, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kClearDbConstMeta;
+
+  Future<List<Book>> addMethodDatabase(
+      {required Database that, required String path, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kAddMethodDatabaseConstMeta;
+
+  Future<List<Book>> getBooksMethodDatabase(
+      {required Database that, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetBooksMethodDatabaseConstMeta;
+}
+
+class Book {
+  final String uuid;
+  final String path;
+  Book({
+    required this.uuid,
+    required this.path,
+  });
+}
+
+class Database {
+  final Native bridge;
+  final String path;
+  Database({
+    required this.bridge,
+    required this.path,
+  });
+
+  Future<List<Book>> add({required String path, dynamic hint}) =>
+      bridge.addMethodDatabase(
+        that: this,
+        path: path,
+      );
+
+  Future<List<Book>> getBooks({dynamic hint}) => bridge.getBooksMethodDatabase(
+        that: this,
+      );
 }

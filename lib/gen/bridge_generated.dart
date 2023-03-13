@@ -57,6 +57,22 @@ class NativeImpl implements Native {
         argNames: [],
       );
 
+  Future<void> goPrev({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_go_prev(port_),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kGoPrevConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGoPrevConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "go_prev",
+        argNames: [],
+      );
+
   Future<String> getContent({dynamic hint}) {
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_get_content(port_),
@@ -122,6 +138,79 @@ class NativeImpl implements Native {
         argNames: ["path"],
       );
 
+  Future<Database> initDb({required String path, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(path);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_init_db(port_, arg0),
+      parseSuccessData: (d) => _wire2api_database(d),
+      constMeta: kInitDbConstMeta,
+      argValues: [path],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kInitDbConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "init_db",
+        argNames: ["path"],
+      );
+
+  Future<void> clearDb({required String path, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(path);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_clear_db(port_, arg0),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kClearDbConstMeta,
+      argValues: [path],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kClearDbConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "clear_db",
+        argNames: ["path"],
+      );
+
+  Future<List<Book>> addMethodDatabase(
+      {required Database that, required String path, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_database(that);
+    var arg1 = _platform.api2wire_String(path);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_add__method__Database(port_, arg0, arg1),
+      parseSuccessData: _wire2api_list_book,
+      constMeta: kAddMethodDatabaseConstMeta,
+      argValues: [that, path],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kAddMethodDatabaseConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "add__method__Database",
+        argNames: ["that", "path"],
+      );
+
+  Future<List<Book>> getBooksMethodDatabase(
+      {required Database that, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_database(that);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_get_books__method__Database(port_, arg0),
+      parseSuccessData: _wire2api_list_book,
+      constMeta: kGetBooksMethodDatabaseConstMeta,
+      argValues: [that],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetBooksMethodDatabaseConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_books__method__Database",
+        argNames: ["that"],
+      );
+
   void dispose() {
     _platform.dispose();
   }
@@ -129,6 +218,30 @@ class NativeImpl implements Native {
 
   String _wire2api_String(dynamic raw) {
     return raw as String;
+  }
+
+  Book _wire2api_book(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Book(
+      uuid: _wire2api_String(arr[0]),
+      path: _wire2api_String(arr[1]),
+    );
+  }
+
+  Database _wire2api_database(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return Database(
+      bridge: this,
+      path: _wire2api_String(arr[0]),
+    );
+  }
+
+  List<Book> _wire2api_list_book(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_book).toList();
   }
 
   int _wire2api_u8(dynamic raw) {
@@ -164,6 +277,13 @@ class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
   }
 
   @protected
+  ffi.Pointer<wire_Database> api2wire_box_autoadd_database(Database raw) {
+    final ptr = inner.new_box_autoadd_database_0();
+    _api_fill_to_wire_database(raw, ptr.ref);
+    return ptr;
+  }
+
+  @protected
   ffi.Pointer<wire_uint_8_list> api2wire_uint_8_list(Uint8List raw) {
     final ans = inner.new_uint_8_list_0(raw.length);
     ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
@@ -172,6 +292,15 @@ class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
 // Section: finalizer
 
 // Section: api_fill_to_wire
+
+  void _api_fill_to_wire_box_autoadd_database(
+      Database apiObj, ffi.Pointer<wire_Database> wireObj) {
+    _api_fill_to_wire_database(apiObj, wireObj.ref);
+  }
+
+  void _api_fill_to_wire_database(Database apiObj, wire_Database wireObj) {
+    wireObj.path = api2wire_String(apiObj.path);
+  }
 }
 
 // ignore_for_file: camel_case_types, non_constant_identifier_names, avoid_positional_boolean_parameters, annotate_overrides, constant_identifier_names
@@ -298,6 +427,18 @@ class NativeWire implements FlutterRustBridgeWireBase {
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>('wire_go_next');
   late final _wire_go_next = _wire_go_nextPtr.asFunction<void Function(int)>();
 
+  void wire_go_prev(
+    int port_,
+  ) {
+    return _wire_go_prev(
+      port_,
+    );
+  }
+
+  late final _wire_go_prevPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>('wire_go_prev');
+  late final _wire_go_prev = _wire_go_prevPtr.asFunction<void Function(int)>();
+
   void wire_get_content(
     int port_,
   ) {
@@ -353,6 +494,89 @@ class NativeWire implements FlutterRustBridgeWireBase {
   late final _wire_sync2 = _wire_sync2Ptr
       .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
 
+  void wire_init_db(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> path,
+  ) {
+    return _wire_init_db(
+      port_,
+      path,
+    );
+  }
+
+  late final _wire_init_dbPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_init_db');
+  late final _wire_init_db = _wire_init_dbPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+
+  void wire_clear_db(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> path,
+  ) {
+    return _wire_clear_db(
+      port_,
+      path,
+    );
+  }
+
+  late final _wire_clear_dbPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_clear_db');
+  late final _wire_clear_db = _wire_clear_dbPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+
+  void wire_add__method__Database(
+    int port_,
+    ffi.Pointer<wire_Database> that,
+    ffi.Pointer<wire_uint_8_list> path,
+  ) {
+    return _wire_add__method__Database(
+      port_,
+      that,
+      path,
+    );
+  }
+
+  late final _wire_add__method__DatabasePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_Database>,
+              ffi.Pointer<wire_uint_8_list>)>>('wire_add__method__Database');
+  late final _wire_add__method__Database =
+      _wire_add__method__DatabasePtr.asFunction<
+          void Function(int, ffi.Pointer<wire_Database>,
+              ffi.Pointer<wire_uint_8_list>)>();
+
+  void wire_get_books__method__Database(
+    int port_,
+    ffi.Pointer<wire_Database> that,
+  ) {
+    return _wire_get_books__method__Database(
+      port_,
+      that,
+    );
+  }
+
+  late final _wire_get_books__method__DatabasePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(ffi.Int64,
+              ffi.Pointer<wire_Database>)>>('wire_get_books__method__Database');
+  late final _wire_get_books__method__Database =
+      _wire_get_books__method__DatabasePtr
+          .asFunction<void Function(int, ffi.Pointer<wire_Database>)>();
+
+  ffi.Pointer<wire_Database> new_box_autoadd_database_0() {
+    return _new_box_autoadd_database_0();
+  }
+
+  late final _new_box_autoadd_database_0Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_Database> Function()>>(
+          'new_box_autoadd_database_0');
+  late final _new_box_autoadd_database_0 = _new_box_autoadd_database_0Ptr
+      .asFunction<ffi.Pointer<wire_Database> Function()>();
+
   ffi.Pointer<wire_uint_8_list> new_uint_8_list_0(
     int len,
   ) {
@@ -390,6 +614,10 @@ class wire_uint_8_list extends ffi.Struct {
 
   @ffi.Int32()
   external int len;
+}
+
+class wire_Database extends ffi.Struct {
+  external ffi.Pointer<wire_uint_8_list> path;
 }
 
 typedef DartPostCObjectFnType = ffi.Pointer<

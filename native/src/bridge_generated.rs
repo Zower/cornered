@@ -44,6 +44,16 @@ fn wire_go_next_impl(port_: MessagePort) {
         move || move |task_callback| Ok(go_next()),
     )
 }
+fn wire_go_prev_impl(port_: MessagePort) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "go_prev",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || move |task_callback| Ok(go_prev()),
+    )
+}
 fn wire_get_content_impl(port_: MessagePort) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -87,6 +97,66 @@ fn wire_sync2_impl(port_: MessagePort, path: impl Wire2Api<String> + UnwindSafe)
         },
     )
 }
+fn wire_init_db_impl(port_: MessagePort, path: impl Wire2Api<String> + UnwindSafe) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "init_db",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_path = path.wire2api();
+            move |task_callback| init_db(api_path)
+        },
+    )
+}
+fn wire_clear_db_impl(port_: MessagePort, path: impl Wire2Api<String> + UnwindSafe) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "clear_db",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_path = path.wire2api();
+            move |task_callback| clear_db(api_path)
+        },
+    )
+}
+fn wire_add__method__Database_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<Database> + UnwindSafe,
+    path: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "add__method__Database",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            let api_path = path.wire2api();
+            move |task_callback| Database::add(&api_that, api_path)
+        },
+    )
+}
+fn wire_get_books__method__Database_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<Database> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_books__method__Database",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            move |task_callback| Database::get_books(&api_that)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks
@@ -117,6 +187,20 @@ impl Wire2Api<u8> for u8 {
 }
 
 // Section: impl IntoDart
+
+impl support::IntoDart for Book {
+    fn into_dart(self) -> support::DartAbi {
+        vec![self.uuid.into_dart(), self.path.into_dart()].into_dart()
+    }
+}
+impl support::IntoDartExceptPrimitive for Book {}
+
+impl support::IntoDart for Database {
+    fn into_dart(self) -> support::DartAbi {
+        vec![self.path.into_dart()].into_dart()
+    }
+}
+impl support::IntoDartExceptPrimitive for Database {}
 
 // Section: executor
 

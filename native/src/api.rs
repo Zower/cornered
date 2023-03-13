@@ -2,7 +2,11 @@
 // When adding new code to your project, note that only items used
 // here will be transformed to their Dart equivalents.
 
-use std::{fs::File, io::BufReader, time::Duration};
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, Write},
+    time::Duration,
+};
 
 use lazy_static::lazy_static;
 
@@ -17,7 +21,7 @@ lazy_static! {
 
 use epub::doc::EpubDoc;
 use parking_lot::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub fn open_doc(path: String) {
     // let file = File::open(path.into()).unwrap();
@@ -32,6 +36,12 @@ pub fn go_next() {
     let mut doc = EPUB.lock();
     let doc = doc.as_mut().unwrap();
     doc.go_next();
+}
+
+pub fn go_prev() {
+    let mut doc = EPUB.lock();
+    let doc = doc.as_mut().unwrap();
+    doc.go_prev();
 }
 
 pub fn get_content() -> String {
@@ -114,6 +124,69 @@ pub fn sync2(path: String) {
         .unwrap();
 
     println!("b {:?}", response);
+}
+
+fn get_file(path: &str) -> anyhow::Result<File> {
+    let path = std::path::Path::new(&path);
+
+    let file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .open(path)?;
+
+    Ok(file)
+}
+
+pub fn init_db(path: String) -> anyhow::Result<Database> {
+    Ok(Database {
+        path: format!("{path}/books.cornered"),
+    })
+}
+
+pub fn clear_db(path: String) -> anyhow::Result<()> {
+    let mut file = get_file(&format!("{path}/books.cornered"))?;
+
+    file.write_all(&bincode::serialize(&Vec::<Book>::new())?)?;
+
+    Ok(())
+}
+
+pub struct Database {
+    pub path: String,
+}
+
+impl Database {
+    pub fn add(&self, path: String) -> anyhow::Result<Vec<Book>> {
+        let id = uuid::Uuid::new_v4().to_string();
+
+        let mut books = self.get_books()?;
+
+        books.push(Book {
+            uuid: id,
+            path: path,
+        });
+
+        let mut file = get_file(&self.path)?;
+
+        file.write_all(&bincode::serialize(&books)?)?;
+
+        Ok(books)
+    }
+
+    pub fn get_books(&self) -> anyhow::Result<Vec<Book>> {
+        let file = get_file(&self.path)?;
+
+        let books: Vec<Book> = bincode::deserialize_from(file).unwrap_or_default();
+
+        Ok(books)
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Book {
+    pub uuid: String,
+    pub path: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
