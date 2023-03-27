@@ -94,21 +94,23 @@ class NativeImpl implements Native {
         argNames: ["id"],
       );
 
-  Future<List<T>> getResources({required DocumentId id, dynamic hint}) {
+  Future<Uint8List> getResource(
+      {required DocumentId id, required String path, dynamic hint}) {
     var arg0 = _platform.api2wire_box_autoadd_document_id(id);
+    var arg1 = _platform.api2wire_String(path);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_get_resources(port_, arg0),
-      parseSuccessData: _wire2api_list_t,
-      constMeta: kGetResourcesConstMeta,
-      argValues: [id],
+      callFfi: (port_) => _platform.inner.wire_get_resource(port_, arg0, arg1),
+      parseSuccessData: _wire2api_uint_8_list,
+      constMeta: kGetResourceConstMeta,
+      argValues: [id, path],
       hint: hint,
     ));
   }
 
-  FlutterRustBridgeTaskConstMeta get kGetResourcesConstMeta =>
+  FlutterRustBridgeTaskConstMeta get kGetResourceConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
-        debugName: "get_resources",
-        argNames: ["id"],
+        debugName: "get_resource",
+        argNames: ["id", "path"],
       );
 
   Future<String> auth({dynamic hint}) {
@@ -390,10 +392,6 @@ class NativeImpl implements Native {
     return (raw as List<dynamic>).map(_wire2api_meaning).toList();
   }
 
-  List<T> _wire2api_list_t(dynamic raw) {
-    return (raw as List<dynamic>).map(_wire2api_t).toList();
-  }
-
   Meaning _wire2api_meaning(dynamic raw) {
     final arr = raw as List<dynamic>;
     if (arr.length != 2)
@@ -430,16 +428,6 @@ class NativeImpl implements Native {
     return Position(
       chapter: _wire2api_usize(arr[0]),
       offset: _wire2api_f64(arr[1]),
-    );
-  }
-
-  T _wire2api_t(dynamic raw) {
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return T(
-      path: _wire2api_String(arr[0]),
-      content: _wire2api_uint_8_list(arr[1]),
     );
   }
 
@@ -700,22 +688,25 @@ class NativeWire implements FlutterRustBridgeWireBase {
   late final _wire_get_content = _wire_get_contentPtr
       .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
 
-  void wire_get_resources(
+  void wire_get_resource(
     int port_,
     ffi.Pointer<wire_DocumentId> id,
+    ffi.Pointer<wire_uint_8_list> path,
   ) {
-    return _wire_get_resources(
+    return _wire_get_resource(
       port_,
       id,
+      path,
     );
   }
 
-  late final _wire_get_resourcesPtr = _lookup<
+  late final _wire_get_resourcePtr = _lookup<
       ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_get_resources');
-  late final _wire_get_resources = _wire_get_resourcesPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
+          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_DocumentId>,
+              ffi.Pointer<wire_uint_8_list>)>>('wire_get_resource');
+  late final _wire_get_resource = _wire_get_resourcePtr.asFunction<
+      void Function(
+          int, ffi.Pointer<wire_DocumentId>, ffi.Pointer<wire_uint_8_list>)>();
 
   void wire_auth(
     int port_,

@@ -113,19 +113,16 @@ pub fn get_content(id: DocumentId) -> anyhow::Result<ContentBlock> {
 //         .collect())
 // }
 
-pub fn get_resources(id: DocumentId) -> anyhow::Result<Vec<T>> {
+pub fn get_resource(id: DocumentId, path: String) -> anyhow::Result<Vec<u8>> {
     let mut docs = DOCUMENTS.get().unwrap().lock();
 
     let doc = docs
         .get_mut(&id)
         .ok_or(anyhow!("No such document: {id:?}"))?;
 
-    Ok(doc.inner.get_resources(""))
-}
-
-pub struct T {
-    pub path: String,
-    pub content: Vec<u8>,
+    doc.inner
+        .get_resource(&path)
+        .ok_or(anyhow::anyhow!("No such "))
 }
 
 pub fn auth() -> String {

@@ -3,9 +3,9 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:cornered/common/common_page.dart';
+import 'package:cornered/common/future_handled_builder.dart';
 import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/smooth_scroll.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,10 +25,11 @@ class _ReaderState extends State<Reader> {
   DocumentId? _id;
   String? _currentContent;
   int _chapter = 0;
-  FilePickerResult? _result;
   final ValueNotifier<String> _currentSelection = ValueNotifier('');
 
   double _fontSize = 18;
+
+  double _offset = 0;
 
   @override
   void initState() {
@@ -39,28 +40,19 @@ class _ReaderState extends State<Reader> {
     _init();
   }
 
-  void _init() {
-    api
-        .openDoc(
-            path: widget.book.path,
-            initialChapter: widget.book.position.chapter)
-        .then(
-      (id) {
-        setState(() {
-          _id = id;
-        });
+  void _init() async {
+    final id =
+        await api.openDoc(path: widget.book.path, initialChapter: _chapter);
 
-        return _setContent();
-      },
-    );
+    setState(() {
+      _id = id;
+    });
+
+    await _setContent();
   }
 
   Future<void> _setContent() async {
     final content = await api.getContent(id: _id!);
-
-    // final x = await api.getSpine(id: _id!);
-    //
-    // print(x.map((e) => e.key + e.mime).join(", "));
 
     setState(() {
       // TODO: type of text
@@ -70,47 +62,62 @@ class _ReaderState extends State<Reader> {
 
   @override
   Widget build(BuildContext context) {
-    return CommonPage(
-      title: 'Reader',
-      actions: [
-        PopupMenuButton(
-          itemBuilder: (context) => <PopupMenuEntry<dynamic>>[
-            PopupMenuWidget(
-              child: StatefulBuilder(builder: (context, setInnerState) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                  child: Card(
-                    elevation: 4,
-                    color: Colors.grey.shade400,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
-                      title: Text('Font size: ${_fontSize.roundToDouble()}'),
-                      subtitle: Slider(
-                        value: _fontSize.roundToDouble(),
-                        max: 35,
-                        onChanged: (val) {
-                          setInnerState(() {
-                            _fontSize = val;
-                          });
-                        },
-                        onChangeEnd: (val) {
-                          setState(() {
+    return WillPopScope(
+      onWillPop: () {
+        Navigator.pop(
+            context,
+            Book(
+              uuid: widget.book.uuid,
+              path: widget.book.path,
+              position: Position(
+                chapter: _chapter,
+                offset: _offset,
+              ),
+            ));
+        return Future.value(false);
+      },
+      child: CommonPage(
+        title: 'Reader',
+        actions: [
+          PopupMenuButton(
+            itemBuilder: (context) => <PopupMenuEntry<dynamic>>[
+              PopupMenuWidget(
+                child: StatefulBuilder(builder: (context, setInnerState) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                    child: Card(
+                      elevation: 4,
+                      color: Colors.grey.shade400,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                        title: Text('Font size: ${_fontSize.roundToDouble()}'),
+                        subtitle: Slider(
+                          value: _fontSize.roundToDouble(),
+                          max: 35,
+                          onChanged: (val) {
                             setInnerState(() {
                               _fontSize = val;
                             });
-                          });
-                        },
+                          },
+                          onChangeEnd: (val) {
+                            setState(() {
+                              setInnerState(() {
+                                _fontSize = val;
+                              });
+                            });
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ),
-          ],
-        )
-      ],
-      child: _body(),
+                  );
+                }),
+              ),
+            ],
+          )
+        ],
+        child: _body(),
+      ),
     );
   }
 
@@ -121,30 +128,41 @@ class _ReaderState extends State<Reader> {
       );
     }
 
-    debugPrint(_fontSize.toString());
-
     return GestureDetector(
-      onHorizontalDragEnd: (r) {
+      onHorizontalDragEnd: (r) async {
         if (r.primaryVelocity! > 100) {
-          api.goPrev(id: _id!).then((value) {
-            setState(() {
-              // TODO: type of text
-              _currentContent = value.content;
-              _chapter--;
-            });
+          final value = await api.goPrev(id: _id!);
+
+          setState(() {
+            // TODO: type of text
+            _currentContent = value.content;
+            _chapter--;
           });
+
+          await widget.db.updateProgress(
+              id: widget.book.uuid, chapter: _chapter, offset: 0);
         } else if (r.primaryVelocity! < -110) {
-          api.goNext(id: _id!).then((value) {
-            setState(() {
-              // TODO: type of text
-              _currentContent = value.content;
-              _chapter++;
-            });
+          final value = await api.goNext(id: _id!);
+
+          setState(() {
+            // TODO: type of text
+            _currentContent = value.content;
+            _chapter++;
           });
+
+          await widget.db.updateProgress(
+              id: widget.book.uuid, chapter: _chapter, offset: 0);
         }
       },
       child: SelectionArea(
         onSelectionChanged: (selection) {
+          final newSelection = selection?.plainText ?? '';
+
+          if (_currentSelection.value.contains(newSelection) &&
+              !_currentSelection.value.contains(' ')) {
+            return;
+          }
+
           _currentSelection.value = selection?.plainText ?? '';
         },
         selectionControls:
@@ -161,6 +179,10 @@ class _ReaderState extends State<Reader> {
                 chapter: _chapter,
                 offset: offset,
               );
+
+              setState(() {
+                _offset = offset;
+              });
             },
             children: [
               DefaultTextStyle(
@@ -203,28 +225,10 @@ class _ReaderState extends State<Reader> {
 
                       return true;
                     }: (context, ctx, element) => FutureBuilder(
-                          // future: Future.value(),
-                          future: (() async {
-                            final id = element!.attributes['src']!;
-
-                            debugPrint(id);
-
-                            try {
-                              final x = await api.getResources(
-                                id: _id!,
-                              );
-
-                              return x
-                                  .firstWhere((element) => element.path == id)
-                                  .content;
-                            } catch (e) {
-                              rethrow;
-                            }
-                          })(),
-                          // api.getResource(
-                          // id: _id!,
-                          // resourceId: element!.attributes['src']!),
-                          // }(),
+                          future: api.getResource(
+                            id: _id!,
+                            path: element!.attributes['src']!,
+                          ),
                           builder: (ctx, AsyncSnapshot<Uint8List> snapshot) {
                             if (snapshot.hasData) {
                               return Image.memory(snapshot.data!);
@@ -292,24 +296,55 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
   DictionarySelectionControls({required this.selection});
 
   @override
+  Widget buildHandle(
+      BuildContext context, TextSelectionHandleType type, double textHeight,
+      [VoidCallback? onTap]) {
+    switch (Theme.of(context).platform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.android:
+        return super.buildHandle(context, type, textHeight);
+      case TargetPlatform.fuchsia:
+      case TargetPlatform.macOS:
+      case TargetPlatform.linux:
+      case TargetPlatform.windows:
+        return const SizedBox.shrink();
+    }
+  }
+
+  @override
   Widget buildToolbar(
-      BuildContext context,
-      Rect globalEditableRegion,
-      double textLineHeight,
-      Offset selectionMidpoint,
-      List<TextSelectionPoint> endpoints,
-      TextSelectionDelegate delegate,
-      ClipboardStatusNotifier? clipboardStatus,
-      Offset? lastSecondaryTapDownPosition) {
+    BuildContext context,
+    Rect globalEditableRegion,
+    double textLineHeight,
+    Offset selectionMidpoint,
+    List<TextSelectionPoint> endpoints,
+    TextSelectionDelegate delegate,
+    ClipboardStatusNotifier? clipboardStatus,
+    Offset? lastSecondaryTapDownPosition,
+  ) {
     return LayoutBuilder(builder: (context, constraints) {
-      final width = min(constraints.maxWidth / 2, 500).toDouble();
-      double height = constraints.maxHeight - endpoints.first.point.dy - 95;
+      double width = constraints.maxWidth;
+      double height = constraints.maxHeight - endpoints.first.point.dy - 80;
 
-      var x = endpoints.first.point.dx;
-      var y = endpoints.first.point.dy + 80;
+      double x = 0.0;
+      double y = endpoints.first.point.dy + 80;
 
-      if (endpoints.first.point.dx + width > constraints.maxWidth) {
-        x = endpoints.first.point.dx - width;
+      switch (Theme.of(context).platform) {
+        case TargetPlatform.iOS:
+        case TargetPlatform.android:
+          break;
+        case TargetPlatform.fuchsia:
+        case TargetPlatform.macOS:
+        case TargetPlatform.linux:
+        case TargetPlatform.windows:
+          width = min(constraints.maxWidth, 500);
+          x = endpoints.first.point.dx;
+
+          if (endpoints.first.point.dx + width > constraints.maxWidth) {
+            x = endpoints.first.point.dx - width;
+          }
+
+          break;
       }
 
       if (endpoints.first.point.dy > constraints.maxHeight / 2) {
@@ -322,13 +357,20 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
         child: Align(
           alignment: Alignment.topLeft,
           child: LayoutBuilder(builder: (context, constraints) {
-            return SizedBox(
-              width: width,
-              height: height,
+            return ConstrainedBox(
+              // width: width,
+              // height: height,
+              constraints: BoxConstraints(
+                minWidth: width,
+                minHeight: 200,
+                maxWidth: width,
+                maxHeight: height,
+              ),
               child: Material(
                 type: MaterialType.transparency,
                 child: Container(
                   padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
                     color: Colors.white,
@@ -342,46 +384,49 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
                       ),
                     ],
                   ),
-                  child: FutureBuilder(
+                  child: FutureHandledBuilder(
                     future: api.getDefinition(word: selection.value),
-                    builder: (context, AsyncSnapshot<Definitions> snapshot) {
-                      if (snapshot.hasData) {
-                        final meanings = snapshot.data!.meanings
-                            .map(
-                              (e) => Column(
-                                children: [
-                                  ...e.definitions
-                                      .map((e) {
-                                        return [
-                                          Text(e.definition),
-                                          if (e.example != null) ...[
-                                            const SizedBox(height: 8),
-                                            Text('Example: ${e.example}'),
-                                          ]
-                                        ];
-                                      })
-                                      .toList()
-                                      .flattened
-                                ],
-                              ),
-                            )
-                            .toList();
-
-                        return ListView.separated(
-                          itemBuilder: (ctx, i) => meanings[i],
-                          separatorBuilder: (ctx, i) => Container(
-                            height: 1,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(99),
-                              color: Colors.black,
+                    loadingBuilder: (context) => const SizedBox(
+                        height: 100,
+                        child:
+                            const Center(child: CircularProgressIndicator())),
+                    errorBuilder: (context, error) =>
+                        const Text('Unable to fetch word.'),
+                    builder: (context, Definitions snapshot) {
+                      final meanings = snapshot.meanings
+                          .map(
+                            (e) => Column(
+                              children: [
+                                ...e.definitions
+                                    .map((e) {
+                                      return [
+                                        Text(e.definition),
+                                        if (e.example != null) ...[
+                                          const SizedBox(height: 8),
+                                          Text('Example: ${e.example}'),
+                                        ]
+                                      ];
+                                    })
+                                    .toList()
+                                    .flattened
+                              ],
                             ),
-                            margin: const EdgeInsets.symmetric(vertical: 8),
+                          )
+                          .toList();
+
+                      return ListView.separated(
+                        itemBuilder: (ctx, i) => meanings[i],
+                        shrinkWrap: true,
+                        separatorBuilder: (ctx, i) => Container(
+                          height: 1,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(99),
+                            color: Colors.black,
                           ),
-                          itemCount: meanings.length,
-                        );
-                      } else {
-                        return const Text('loading');
-                      }
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        itemCount: meanings.length,
+                      );
                     },
                   ),
                 ),
@@ -404,7 +449,7 @@ class PopupMenuWidget extends PopupMenuEntry<Never> {
   double get height => throw UnimplementedError();
 
   @override
-  bool represents(Never? value) {
+  bool represents(void value) {
     // TODO: implement represents
     throw UnimplementedError();
   }

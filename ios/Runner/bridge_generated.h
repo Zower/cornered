@@ -42,7 +42,7 @@ void wire_go_prev(int64_t port_, struct wire_DocumentId *id);
 
 void wire_get_content(int64_t port_, struct wire_DocumentId *id);
 
-void wire_get_resources(int64_t port_, struct wire_DocumentId *id);
+void wire_get_resource(int64_t port_, struct wire_DocumentId *id, struct wire_uint_8_list *path);
 
 void wire_auth(int64_t port_);
 
@@ -84,7 +84,7 @@ static int64_t dummy_method_to_enforce_bundling(void) {
     dummy_var ^= ((int64_t) (void*) wire_go_next);
     dummy_var ^= ((int64_t) (void*) wire_go_prev);
     dummy_var ^= ((int64_t) (void*) wire_get_content);
-    dummy_var ^= ((int64_t) (void*) wire_get_resources);
+    dummy_var ^= ((int64_t) (void*) wire_get_resource);
     dummy_var ^= ((int64_t) (void*) wire_auth);
     dummy_var ^= ((int64_t) (void*) wire_poll);
     dummy_var ^= ((int64_t) (void*) wire_sync2);

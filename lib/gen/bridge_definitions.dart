@@ -25,9 +25,10 @@ abstract class Native {
 
   FlutterRustBridgeTaskConstMeta get kGetContentConstMeta;
 
-  Future<List<T>> getResources({required DocumentId id, dynamic hint});
+  Future<Uint8List> getResource(
+      {required DocumentId id, required String path, dynamic hint});
 
-  FlutterRustBridgeTaskConstMeta get kGetResourcesConstMeta;
+  FlutterRustBridgeTaskConstMeta get kGetResourceConstMeta;
 
   Future<String> auth({dynamic hint});
 
@@ -185,14 +186,5 @@ class Position {
   Position({
     required this.chapter,
     required this.offset,
-  });
-}
-
-class T {
-  final String path;
-  final Uint8List content;
-  T({
-    required this.path,
-    required this.content,
   });
 }

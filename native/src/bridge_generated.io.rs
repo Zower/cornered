@@ -22,8 +22,12 @@ pub extern "C" fn wire_get_content(port_: i64, id: *mut wire_DocumentId) {
 }
 
 #[no_mangle]
-pub extern "C" fn wire_get_resources(port_: i64, id: *mut wire_DocumentId) {
-    wire_get_resources_impl(port_, id)
+pub extern "C" fn wire_get_resource(
+    port_: i64,
+    id: *mut wire_DocumentId,
+    path: *mut wire_uint_8_list,
+) {
+    wire_get_resource_impl(port_, id, path)
 }
 
 #[no_mangle]

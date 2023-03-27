@@ -86,16 +86,21 @@ fn wire_get_content_impl(port_: MessagePort, id: impl Wire2Api<DocumentId> + Unw
         },
     )
 }
-fn wire_get_resources_impl(port_: MessagePort, id: impl Wire2Api<DocumentId> + UnwindSafe) {
+fn wire_get_resource_impl(
+    port_: MessagePort,
+    id: impl Wire2Api<DocumentId> + UnwindSafe,
+    path: impl Wire2Api<String> + UnwindSafe,
+) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
-            debug_name: "get_resources",
+            debug_name: "get_resource",
             port: Some(port_),
             mode: FfiCallMode::Normal,
         },
         move || {
             let api_id = id.wire2api();
-            move |task_callback| get_resources(api_id)
+            let api_path = path.wire2api();
+            move |task_callback| get_resource(api_id, api_path)
         },
     )
 }
@@ -375,13 +380,6 @@ impl support::IntoDart for Position {
     }
 }
 impl support::IntoDartExceptPrimitive for Position {}
-
-impl support::IntoDart for T {
-    fn into_dart(self) -> support::DartAbi {
-        vec![self.path.into_dart(), self.content.into_dart()].into_dart()
-    }
-}
-impl support::IntoDartExceptPrimitive for T {}
 
 // Section: executor
 

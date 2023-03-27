@@ -62,9 +62,7 @@ class _LibraryState extends State<Library> {
   }
 
   Widget _body() {
-    debugPrint(_books.toString());
     if (_books == null) {
-      debugPrint('arstars');
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -111,14 +109,25 @@ class _LibraryState extends State<Library> {
                 leading: snapshot.data!.cover != null
                     ? Image.memory(snapshot.data!.cover!)
                     : null,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => Reader(
-                      book: book,
-                      db: db!,
+                onTap: () async {
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute<Book>(
+                      builder: (context) => Reader(
+                        book: book,
+                        db: db!,
+                      ),
                     ),
-                  ),
-                ),
+                  );
+
+                  if (!mounted) return;
+
+                  final index = _books!
+                      .indexWhere((element) => element.uuid == result!.uuid);
+
+                  setState(() {
+                    _books?[index] = result!;
+                  });
+                },
               ),
             ),
           );

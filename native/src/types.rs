@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt::Debug, fs::File, io::BufReader};
 use epub::doc::EpubDoc;
 use serde::{Deserialize, Serialize};
 
-use crate::api::{Meta, T};
+use crate::api::Meta;
 
 pub trait DocumentT: Send + Sync + Debug {
     fn get_title(&self) -> String;
@@ -12,7 +12,7 @@ pub trait DocumentT: Send + Sync + Debug {
     fn go_prev(&mut self) -> Option<ContentBlock>;
     fn go_to(&mut self, index: usize) -> Option<ContentBlock>;
     fn get_current(&mut self) -> Option<ContentBlock>;
-    fn get_resources(&mut self, id: &str) -> Vec<T>;
+    fn get_resource(&mut self, id: &str) -> Option<Vec<u8>>;
     fn get_spine(&mut self) -> HashMap<String, (String, String)>;
     fn meta(&mut self) -> Meta;
 }
@@ -71,27 +71,8 @@ impl DocumentT for Epub {
             .map(|s| ContentBlock::new(s.0, ContentType::Html))
     }
 
-    // TODO PLEASE HELP ME
-    // THIS IS Bad CODE USE getresourcebypath instaed in fturue PLEASE TORD PLEASE
-    fn get_resources(&mut self, id: &str) -> Vec<T> {
-        let x: Vec<_> = self
-            .doc
-            .resources
-            .iter()
-            .map(|(k, v)| v.0.clone())
-            .collect();
-
-        x.iter()
-            .map(|v| T {
-                path: v.to_str().unwrap().to_string(),
-                content: self.doc.get_resource_by_path(&v).unwrap(),
-            })
-            .collect()
-
-        // T {
-        //                 path: v.0.to_str().unwrap().to_string(),
-        //                 content: self.doc.get_resource_by_path(&v.0).unwrap(),
-        //             }
+    fn get_resource(&mut self, id: &str) -> Option<Vec<u8>> {
+        self.doc.get_resource_by_path(id)
     }
 
     // fn get_resource(&mut self, id: &str) -> Option<Vec<u8>> {
@@ -127,6 +108,16 @@ impl DocumentT for Epub {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DocumentId(pub u32);
+
+impl DocumentId {
+    pub fn new(id: u32) -> Self {
+        Self(id)
+    }
+
+    pub fn get(&self) -> u32 {
+        self.0
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ContentBlock {
