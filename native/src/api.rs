@@ -2,53 +2,130 @@
 // When adding new code to your project, note that only items used
 // here will be transformed to their Dart equivalents.
 
-use std::{
-    fs::{File, OpenOptions},
-    io::{BufReader, Write},
-    time::Duration,
-};
+use std::{collections::HashMap, time::Duration};
 
-use lazy_static::lazy_static;
+static SQLX: OnceCell<Mutex<Connection>> = OnceCell::new();
+// static ACCESS_TOKEN: OnceCell<Mutex<String>> = OnceCell::new();
+// static EPUB: OnceCell<Mutex<EpubDoc<BufReader<File>>>> = OnceCell::new();
+// static ONGOING: OnceCell<Mutex<DeviceCode>> = OnceCell::new();
+static DOCUMENTS: OnceCell<Mutex<HashMap<DocumentId, Document>>> = OnceCell::new();
+static DOCUMENT_COUNT: OnceCell<Mutex<u32>> = OnceCell::new();
 
-lazy_static! {
-    // TODO multiple
-    static ref EPUB: Mutex<Option<EpubDoc<BufReader<File>>>> = Mutex::new(None);
+// lazy_static! {
+//     // TODO multiple
+//     static ref EPUB: Mutex<Option<EpubDoc<BufReader<File>>>> = Mutex::new(None);
 
-    static ref ONGOING: Mutex<Option<DeviceCode>> = Mutex::new(None);
+//     static ref ONGOING: Mutex<Option<DeviceCode>> = Mutex::new(None);
 
-    static ref ACCESS_TOKEN : Mutex<Option<String>> = Mutex::new(None);
-}
+//     static ref ACCESS_TOKEN : Mutex<Option<String>> = Mutex::new(None);
+// }
 
-use epub::doc::EpubDoc;
+use anyhow::anyhow;
+use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
-pub fn open_doc(path: String) {
-    // let file = File::open(path.into()).unwrap();
-    // let mut doc = EpubDoc::from_reader(BufReader::new(file))?;
-    // doc.archive.path = path.to_path_buf();
-    let doc = EpubDoc::new(path).unwrap();
+use crate::{
+    types::{ContentBlock, Definitions, Document, DocumentId, Position},
+    util::{open_document, ResponseOkStatus},
+};
 
-    EPUB.lock().replace(doc);
+pub fn open_doc(path: String, initial_chapter: usize) -> anyhow::Result<DocumentId> {
+    let mut doc = open_document(path)?;
+    let mut count = DOCUMENT_COUNT.get_or_init(|| Mutex::new(0)).lock();
+
+    *count += 1;
+
+    let id = DocumentId(*count);
+
+    let mut docs = DOCUMENTS.get_or_init(|| Mutex::new(HashMap::new())).lock();
+
+    doc.inner.go_to(initial_chapter);
+
+    docs.insert(id, doc);
+
+    Ok(id)
 }
 
-pub fn go_next() {
-    let mut doc = EPUB.lock();
-    let doc = doc.as_mut().unwrap();
-    doc.go_next();
+pub fn go_next(id: DocumentId) -> anyhow::Result<ContentBlock> {
+    let mut docs = DOCUMENTS.get().unwrap().lock();
+
+    let doc = docs
+        .get_mut(&id)
+        .ok_or(anyhow!("No such document: {id:?}"))?;
+
+    doc.inner.go_next().ok_or(anyhow::anyhow!("No next page"))
 }
 
-pub fn go_prev() {
-    let mut doc = EPUB.lock();
-    let doc = doc.as_mut().unwrap();
-    doc.go_prev();
+pub fn go_prev(id: DocumentId) -> anyhow::Result<ContentBlock> {
+    let mut docs = DOCUMENTS.get().unwrap().lock();
+
+    let doc = docs
+        .get_mut(&id)
+        .ok_or(anyhow!("No such document: {id:?}"))?;
+
+    doc.inner
+        .go_prev()
+        .ok_or(anyhow::anyhow!("No previous page"))
 }
 
-pub fn get_content() -> String {
-    let mut doc = EPUB.lock();
-    let doc = doc.as_mut().unwrap();
+pub fn get_content(id: DocumentId) -> anyhow::Result<ContentBlock> {
+    let mut docs = DOCUMENTS.get().unwrap().lock();
 
-    doc.get_current_str().unwrap().0
+    let doc = docs
+        .get_mut(&id)
+        .ok_or(anyhow!("No such document: {id:?}"))?;
+
+    doc.inner
+        .get_current()
+        .ok_or(anyhow::anyhow!("No current content"))
+}
+
+// pub fn get_resource(id: DocumentId, resource_id: String) -> anyhow::Result<Vec<u8>> {
+//     let mut docs = DOCUMENTS.get().unwrap().lock();
+
+//     let doc = docs
+//         .get_mut(&id)
+//         .ok_or(anyhow!("No such document: {id:?}"))?;
+
+//     doc.inner
+//         .get_resource(&resource_id)
+//         .ok_or(anyhow::anyhow!("No such content"))
+// }
+
+// pub fn get_spine(id: DocumentId) -> anyhow::Result<Vec<T>> {
+//     let mut docs = DOCUMENTS.get().unwrap().lock();
+
+//     let doc = docs
+//         .get_mut(&id)
+//         .ok_or(anyhow!("No such document: {id:?}"))?;
+
+//     Ok(doc
+//         .inner
+//         .get_spine()
+//         .iter()
+//         .map(|x| T {
+//             key: x.0.clone(),
+//             value: x.1 .0.clone(),
+//             mime: x.1 .1.clone(),
+//         })
+//         .collect())
+// }
+
+pub fn get_resources(id: DocumentId) -> anyhow::Result<Vec<T>> {
+    let mut docs = DOCUMENTS.get().unwrap().lock();
+
+    let doc = docs
+        .get_mut(&id)
+        .ok_or(anyhow!("No such document: {id:?}"))?;
+
+    Ok(doc.inner.get_resources(""))
+}
+
+pub struct T {
+    pub path: String,
+    pub content: Vec<u8>,
 }
 
 pub fn auth() -> String {
@@ -63,123 +140,184 @@ pub fn auth() -> String {
 
     let code = response.user_code.clone();
 
-    *ONGOING.lock() = Some(response);
+    // ONGOING.set(Mutex::new(response)).unwrap();
 
     code
 }
 
 pub fn poll() {
-    let ongoing = { ONGOING.lock().as_ref().unwrap().clone() };
+    // let ongoing = { ONGOING.get().unwrap().lock().clone() };
 
-    let mut response_final: Option<CodeResponse> = None;
+    // let mut response_final: Option<CodeResponse> = None;
 
-    while None == response_final {
-        std::thread::sleep(Duration::from_secs(ongoing.interval));
-        let response = ureq::post("https://github.com/login/oauth/access_token")
-            .query("client_id", "bc2ede3adf378ac47e57")
-            .query("device_code", &ongoing.device_code)
-            .query("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
-            .set("accept", "application/json")
-            .call()
-            .unwrap()
-            .into_json::<CodeResponse>();
+    // while None == response_final {
+    //     std::thread::sleep(Duration::from_secs(ongoing.interval));
+    //     let response = ureq::post("https://github.com/login/oauth/access_token")
+    //         .query("client_id", "bc2ede3adf378ac47e57")
+    //         .query("device_code", &ongoing.device_code)
+    //         .query("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
+    //         .set("accept", "application/json")
+    //         .call()
+    //         .unwrap()
+    //         .into_json::<CodeResponse>();
 
-        if let Ok(response) = response {
-            *ONGOING.lock() = None;
-            response_final = Some(response);
-        }
-    }
+    //     if let Ok(response) = response {
+    //         // *ONGOING.() = None;
+    //         response_final = Some(response);
+    //     }
+    // }
 
-    *ACCESS_TOKEN.lock() = Some(response_final.unwrap().access_token);
+    // ACCESS_TOKEN.set(Mutex::new(response_final.unwrap().access_token));
 
-    let response = ureq::get("https://api.github.com/repos/zower/cornered/contents/README.md")
-        .set(
-            "Authorization",
-            format!("Bearer {}", ACCESS_TOKEN.lock().as_ref().unwrap()).as_str(),
-        )
-        .set("accept", "application/vnd.github+json")
-        .call()
-        .unwrap()
-        .into_json::<FileResponse>()
-        .unwrap();
+    // let response = ureq::get("https://api.github.com/repos/zower/cornered/contents/README.md")
+    //     .set(
+    //         "Authorization",
+    //         format!("Bearer {}", ACCESS_TOKEN.lock().as_ref().unwrap()).as_str(),
+    //     )
+    //     .set("accept", "application/vnd.github+json")
+    //     .call()
+    //     .unwrap()
+    //     .into_json::<FileResponse>()
+    //     .unwrap();
 
-    println!("a {:?}", response);
+    // println!("a {:?}", response);
 }
 
 pub fn sync2(path: String) {
-    #[allow(deprecated)]
-    let x = base64::encode(std::fs::read(path).unwrap());
-    let response = ureq::put("https://api.github.com/repos/zower/cornered/contents/book.epub")
-        .set(
-            "Authorization",
-            format!("Bearer {}", ACCESS_TOKEN.lock().as_ref().unwrap()).as_str(),
-        )
-        .set("accept", "application/vnd.github+json")
-        .send_json(ureq::json!({
-            "message": "test",
-            "content": x
-        }))
-        .unwrap()
-        .into_string()
-        .unwrap();
+    // #[allow(deprecated)]
+    // let x = base64::encode(std::fs::read(path).unwrap());
+    // let response = ureq::put("https://api.github.com/repos/zower/cornered/contents/book.epub")
+    //     .set(
+    //         "Authorization",
+    //         format!("Bearer {}", ACCESS_TOKEN.lock().as_ref().unwrap()).as_str(),
+    //     )
+    //     .set("accept", "application/vnd.github+json")
+    //     .send_json(ureq::json!({
+    //         "message": "test",
+    //         "content": x
+    //     }))
+    //     .unwrap()
+    //     .into_string()
+    //     .unwrap();
 
-    println!("b {:?}", response);
-}
-
-fn get_file(path: &str) -> anyhow::Result<File> {
-    let path = std::path::Path::new(&path);
-
-    let file = OpenOptions::new()
-        .create(true)
-        .read(true)
-        .write(true)
-        .open(path)?;
-
-    Ok(file)
+    // println!("b {:?}", response);
 }
 
 pub fn init_db(path: String) -> anyhow::Result<Database> {
-    Ok(Database {
-        path: format!("{path}/books.cornered"),
-    })
+    let x = SQLX.get_or_try_init(
+        || -> anyhow::Result<parking_lot::lock_api::Mutex<parking_lot::RawMutex, Connection>> {
+            Ok(Mutex::new(Connection::open(format!(
+                "{path}/cornered.db3"
+            ))?))
+        },
+    )?;
+
+    let stmt = x
+        .try_lock_for(Duration::from_secs(1))
+        .ok_or(anyhow!("Failed to lock DB"))?;
+
+    stmt.prepare(
+        "CREATE TABLE IF NOT EXISTS books (
+            uuid TEXT PRIMARY KEY,
+            path TEXT NOT NULL,
+            chapter INTEGER NOT NULL,
+            offset REAL NOT NULL
+        )",
+    )?
+    .execute(())?;
+
+    // stmt.prepare(
+    //     "CREATE TABLE IF NOT EXISTS progress (
+    //         book TEXT REFERENCES books(uuid) ON DELETE CASCADE,
+    //     )",
+    // )?
+    // .execute(())?;
+
+    Ok(Database {})
 }
 
-pub fn clear_db(path: String) -> anyhow::Result<()> {
-    let mut file = get_file(&format!("{path}/books.cornered"))?;
+/// Returns the metadata that might be useful in a "bookshelf" view
+pub fn get_meta(id: String) -> anyhow::Result<Meta> {
+    let stmt = SQLX.get().unwrap().lock();
 
-    file.write_all(&bincode::serialize(&Vec::<Book>::new())?)?;
+    let mut stmt = stmt.prepare("SELECT path FROM books WHERE uuid = ?1")?;
+
+    let mut rows = stmt.query(&[&id])?;
+
+    let row = rows.next()?.ok_or(anyhow!("No such book"))?;
+
+    let path: String = row.get(0)?;
+
+    Ok(open_document(path)?.inner.meta())
+}
+
+pub fn clear_db() -> anyhow::Result<()> {
+    let stmt = SQLX.get().unwrap().lock();
+
+    stmt.execute("DELETE FROM books", [])?;
 
     Ok(())
 }
 
-pub struct Database {
-    pub path: String,
+pub fn get_definition(mut word: String) -> anyhow::Result<Definitions> {
+    word.retain(|c| !r#"(),".;:'"#.contains(c));
+
+    Ok(ureq::get(&format!(
+        "https://api.dictionaryapi.dev/api/v2/entries/en/{}",
+        word.trim().to_lowercase()
+    ))
+    .call()?
+    .ok_status()?
+    .into_json::<Vec<Definitions>>()?
+    .remove(0))
 }
 
+pub struct Database {}
+
 impl Database {
-    pub fn add(&self, path: String) -> anyhow::Result<Vec<Book>> {
+    pub fn add_book(&self, path: String) -> anyhow::Result<Vec<Book>> {
         let id = uuid::Uuid::new_v4().to_string();
 
-        let mut books = self.get_books()?;
+        {
+            let stmt = SQLX.get().unwrap().lock();
 
-        books.push(Book {
-            uuid: id,
-            path: path,
-        });
+            stmt.execute(
+                "INSERT INTO books (uuid, path, chapter, offset) VALUES (?1, ?2, 0, 0.0)",
+                (&id, &path),
+            )?;
+        }
 
-        let mut file = get_file(&self.path)?;
+        Ok(self.get_books()?)
+    }
 
-        file.write_all(&bincode::serialize(&books)?)?;
+    pub fn update_progress(&self, id: String, chapter: usize, offset: f64) -> anyhow::Result<()> {
+        let stmt = SQLX.get().unwrap().lock();
 
-        Ok(books)
+        stmt.execute(
+            "UPDATE books SET chapter = ?1, offset = ?2 WHERE uuid = ?3",
+            (&chapter, &offset, &id),
+        )?;
+
+        Ok(())
     }
 
     pub fn get_books(&self) -> anyhow::Result<Vec<Book>> {
-        let file = get_file(&self.path)?;
+        let stmt = SQLX.get().unwrap().lock();
 
-        let books: Vec<Book> = bincode::deserialize_from(file).unwrap_or_default();
+        let mut stmt = stmt.prepare("SELECT uuid, path, chapter, offset FROM books")?;
 
-        Ok(books)
+        let books = stmt.query_map([], |row| {
+            Ok(Book {
+                uuid: row.get(0)?,
+                path: row.get(1)?,
+                position: Position {
+                    chapter: row.get(2)?,
+                    offset: row.get(3)?,
+                },
+            })
+        })?;
+
+        Ok(books.map(|x| x.unwrap()).collect())
     }
 }
 
@@ -187,6 +325,13 @@ impl Database {
 pub struct Book {
     pub uuid: String,
     pub path: String,
+    pub position: Position,
+}
+
+pub struct Meta {
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub cover: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

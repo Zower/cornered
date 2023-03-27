@@ -1,18 +1,19 @@
 import 'package:cornered/gen/ffi.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 
 class CommonPage extends StatelessWidget {
   const CommonPage(
       {Key? key,
       required this.title,
       required this.child,
-      this.floatingActionButton})
+      this.floatingActionButton,
+      this.actions = const []})
       : super(key: key);
 
   final String title;
   final Widget child;
   final Widget? floatingActionButton;
+  final List<Widget> actions;
   // final AppBar? appBar;
 
   @override
@@ -39,8 +40,7 @@ class CommonPage extends StatelessWidget {
           ListTile(
             title: const Text('Clear database'),
             onTap: () async {
-              api.clearDb(
-                  path: (await getApplicationDocumentsDirectory()).path);
+              api.clearDb();
             },
           ),
         ],
@@ -51,12 +51,7 @@ class CommonPage extends StatelessWidget {
   AppBar _appBar() {
     return AppBar(
       title: const Text('Cornered'),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () {},
-        ),
-      ],
+      actions: actions,
     );
   }
 }

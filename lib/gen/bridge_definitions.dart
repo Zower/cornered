@@ -8,21 +8,26 @@ import 'package:meta/meta.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 
 abstract class Native {
-  Future<void> openDoc({required String path, dynamic hint});
+  Future<DocumentId> openDoc(
+      {required String path, required int initialChapter, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kOpenDocConstMeta;
 
-  Future<void> goNext({dynamic hint});
+  Future<ContentBlock> goNext({required DocumentId id, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGoNextConstMeta;
 
-  Future<void> goPrev({dynamic hint});
+  Future<ContentBlock> goPrev({required DocumentId id, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGoPrevConstMeta;
 
-  Future<String> getContent({dynamic hint});
+  Future<ContentBlock> getContent({required DocumentId id, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGetContentConstMeta;
+
+  Future<List<T>> getResources({required DocumentId id, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetResourcesConstMeta;
 
   Future<String> auth({dynamic hint});
 
@@ -40,14 +45,32 @@ abstract class Native {
 
   FlutterRustBridgeTaskConstMeta get kInitDbConstMeta;
 
-  Future<void> clearDb({required String path, dynamic hint});
+  /// Returns the metadata that might be useful in a "bookshelf" view
+  Future<Meta> getMeta({required String id, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetMetaConstMeta;
+
+  Future<void> clearDb({dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kClearDbConstMeta;
 
-  Future<List<Book>> addMethodDatabase(
+  Future<Definitions> getDefinition({required String word, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetDefinitionConstMeta;
+
+  Future<List<Book>> addBookMethodDatabase(
       {required Database that, required String path, dynamic hint});
 
-  FlutterRustBridgeTaskConstMeta get kAddMethodDatabaseConstMeta;
+  FlutterRustBridgeTaskConstMeta get kAddBookMethodDatabaseConstMeta;
+
+  Future<void> updateProgressMethodDatabase(
+      {required Database that,
+      required String id,
+      required int chapter,
+      required double offset,
+      dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kUpdateProgressMethodDatabaseConstMeta;
 
   Future<List<Book>> getBooksMethodDatabase(
       {required Database that, dynamic hint});
@@ -58,27 +81,118 @@ abstract class Native {
 class Book {
   final String uuid;
   final String path;
+  final Position position;
   Book({
     required this.uuid,
     required this.path,
+    required this.position,
   });
+}
+
+class ContentBlock {
+  final String content;
+  final ContentType contentType;
+  ContentBlock({
+    required this.content,
+    required this.contentType,
+  });
+}
+
+enum ContentType {
+  Text,
+  Html,
 }
 
 class Database {
   final Native bridge;
-  final String path;
   Database({
     required this.bridge,
-    required this.path,
   });
 
-  Future<List<Book>> add({required String path, dynamic hint}) =>
-      bridge.addMethodDatabase(
+  Future<List<Book>> addBook({required String path, dynamic hint}) =>
+      bridge.addBookMethodDatabase(
         that: this,
         path: path,
+      );
+
+  Future<void> updateProgress(
+          {required String id,
+          required int chapter,
+          required double offset,
+          dynamic hint}) =>
+      bridge.updateProgressMethodDatabase(
+        that: this,
+        id: id,
+        chapter: chapter,
+        offset: offset,
       );
 
   Future<List<Book>> getBooks({dynamic hint}) => bridge.getBooksMethodDatabase(
         that: this,
       );
+}
+
+class Definition {
+  final String definition;
+  final String? example;
+  final List<String> synonyms;
+  Definition({
+    required this.definition,
+    this.example,
+    required this.synonyms,
+  });
+}
+
+class Definitions {
+  final String word;
+  final List<Meaning> meanings;
+  Definitions({
+    required this.word,
+    required this.meanings,
+  });
+}
+
+class DocumentId {
+  final int field0;
+  DocumentId({
+    required this.field0,
+  });
+}
+
+class Meaning {
+  final String partOfSpeech;
+  final List<Definition> definitions;
+  Meaning({
+    required this.partOfSpeech,
+    required this.definitions,
+  });
+}
+
+class Meta {
+  final String? title;
+  final String? author;
+  final Uint8List? cover;
+  Meta({
+    this.title,
+    this.author,
+    this.cover,
+  });
+}
+
+class Position {
+  final int chapter;
+  final double offset;
+  Position({
+    required this.chapter,
+    required this.offset,
+  });
+}
+
+class T {
+  final String path;
+  final Uint8List content;
+  T({
+    required this.path,
+    required this.content,
+  });
 }

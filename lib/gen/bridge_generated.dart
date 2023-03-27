@@ -24,13 +24,15 @@ class NativeImpl implements Native {
   factory NativeImpl.wasm(FutureOr<WasmModule> module) =>
       NativeImpl(module as ExternalLibrary);
   NativeImpl.raw(this._platform);
-  Future<void> openDoc({required String path, dynamic hint}) {
+  Future<DocumentId> openDoc(
+      {required String path, required int initialChapter, dynamic hint}) {
     var arg0 = _platform.api2wire_String(path);
+    var arg1 = api2wire_usize(initialChapter);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_open_doc(port_, arg0),
-      parseSuccessData: _wire2api_unit,
+      callFfi: (port_) => _platform.inner.wire_open_doc(port_, arg0, arg1),
+      parseSuccessData: _wire2api_document_id,
       constMeta: kOpenDocConstMeta,
-      argValues: [path],
+      argValues: [path, initialChapter],
       hint: hint,
     ));
   }
@@ -38,15 +40,16 @@ class NativeImpl implements Native {
   FlutterRustBridgeTaskConstMeta get kOpenDocConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "open_doc",
-        argNames: ["path"],
+        argNames: ["path", "initialChapter"],
       );
 
-  Future<void> goNext({dynamic hint}) {
+  Future<ContentBlock> goNext({required DocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_go_next(port_),
-      parseSuccessData: _wire2api_unit,
+      callFfi: (port_) => _platform.inner.wire_go_next(port_, arg0),
+      parseSuccessData: _wire2api_content_block,
       constMeta: kGoNextConstMeta,
-      argValues: [],
+      argValues: [id],
       hint: hint,
     ));
   }
@@ -54,15 +57,16 @@ class NativeImpl implements Native {
   FlutterRustBridgeTaskConstMeta get kGoNextConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "go_next",
-        argNames: [],
+        argNames: ["id"],
       );
 
-  Future<void> goPrev({dynamic hint}) {
+  Future<ContentBlock> goPrev({required DocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_go_prev(port_),
-      parseSuccessData: _wire2api_unit,
+      callFfi: (port_) => _platform.inner.wire_go_prev(port_, arg0),
+      parseSuccessData: _wire2api_content_block,
       constMeta: kGoPrevConstMeta,
-      argValues: [],
+      argValues: [id],
       hint: hint,
     ));
   }
@@ -70,15 +74,16 @@ class NativeImpl implements Native {
   FlutterRustBridgeTaskConstMeta get kGoPrevConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "go_prev",
-        argNames: [],
+        argNames: ["id"],
       );
 
-  Future<String> getContent({dynamic hint}) {
+  Future<ContentBlock> getContent({required DocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_get_content(port_),
-      parseSuccessData: _wire2api_String,
+      callFfi: (port_) => _platform.inner.wire_get_content(port_, arg0),
+      parseSuccessData: _wire2api_content_block,
       constMeta: kGetContentConstMeta,
-      argValues: [],
+      argValues: [id],
       hint: hint,
     ));
   }
@@ -86,7 +91,24 @@ class NativeImpl implements Native {
   FlutterRustBridgeTaskConstMeta get kGetContentConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "get_content",
-        argNames: [],
+        argNames: ["id"],
+      );
+
+  Future<List<T>> getResources({required DocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_get_resources(port_, arg0),
+      parseSuccessData: _wire2api_list_t,
+      constMeta: kGetResourcesConstMeta,
+      argValues: [id],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetResourcesConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_resources",
+        argNames: ["id"],
       );
 
   Future<String> auth({dynamic hint}) {
@@ -155,13 +177,29 @@ class NativeImpl implements Native {
         argNames: ["path"],
       );
 
-  Future<void> clearDb({required String path, dynamic hint}) {
-    var arg0 = _platform.api2wire_String(path);
+  Future<Meta> getMeta({required String id, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_clear_db(port_, arg0),
+      callFfi: (port_) => _platform.inner.wire_get_meta(port_, arg0),
+      parseSuccessData: _wire2api_meta,
+      constMeta: kGetMetaConstMeta,
+      argValues: [id],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetMetaConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_meta",
+        argNames: ["id"],
+      );
+
+  Future<void> clearDb({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_clear_db(port_),
       parseSuccessData: _wire2api_unit,
       constMeta: kClearDbConstMeta,
-      argValues: [path],
+      argValues: [],
       hint: hint,
     ));
   }
@@ -169,27 +207,71 @@ class NativeImpl implements Native {
   FlutterRustBridgeTaskConstMeta get kClearDbConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "clear_db",
-        argNames: ["path"],
+        argNames: [],
       );
 
-  Future<List<Book>> addMethodDatabase(
+  Future<Definitions> getDefinition({required String word, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(word);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_get_definition(port_, arg0),
+      parseSuccessData: _wire2api_definitions,
+      constMeta: kGetDefinitionConstMeta,
+      argValues: [word],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetDefinitionConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_definition",
+        argNames: ["word"],
+      );
+
+  Future<List<Book>> addBookMethodDatabase(
       {required Database that, required String path, dynamic hint}) {
     var arg0 = _platform.api2wire_box_autoadd_database(that);
     var arg1 = _platform.api2wire_String(path);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) =>
-          _platform.inner.wire_add__method__Database(port_, arg0, arg1),
+          _platform.inner.wire_add_book__method__Database(port_, arg0, arg1),
       parseSuccessData: _wire2api_list_book,
-      constMeta: kAddMethodDatabaseConstMeta,
+      constMeta: kAddBookMethodDatabaseConstMeta,
       argValues: [that, path],
       hint: hint,
     ));
   }
 
-  FlutterRustBridgeTaskConstMeta get kAddMethodDatabaseConstMeta =>
+  FlutterRustBridgeTaskConstMeta get kAddBookMethodDatabaseConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
-        debugName: "add__method__Database",
+        debugName: "add_book__method__Database",
         argNames: ["that", "path"],
+      );
+
+  Future<void> updateProgressMethodDatabase(
+      {required Database that,
+      required String id,
+      required int chapter,
+      required double offset,
+      dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_database(that);
+    var arg1 = _platform.api2wire_String(id);
+    var arg2 = api2wire_usize(chapter);
+    var arg3 = api2wire_f64(offset);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner
+          .wire_update_progress__method__Database(
+              port_, arg0, arg1, arg2, arg3),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kUpdateProgressMethodDatabaseConstMeta,
+      argValues: [that, id, chapter, offset],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kUpdateProgressMethodDatabaseConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "update_progress__method__Database",
+        argNames: ["that", "id", "chapter", "offset"],
       );
 
   Future<List<Book>> getBooksMethodDatabase(
@@ -220,28 +302,149 @@ class NativeImpl implements Native {
     return raw as String;
   }
 
+  List<String> _wire2api_StringList(dynamic raw) {
+    return (raw as List<dynamic>).cast<String>();
+  }
+
   Book _wire2api_book(dynamic raw) {
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return Book(
       uuid: _wire2api_String(arr[0]),
       path: _wire2api_String(arr[1]),
+      position: _wire2api_position(arr[2]),
     );
+  }
+
+  ContentBlock _wire2api_content_block(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ContentBlock(
+      content: _wire2api_String(arr[0]),
+      contentType: _wire2api_content_type(arr[1]),
+    );
+  }
+
+  ContentType _wire2api_content_type(dynamic raw) {
+    return ContentType.values[raw];
   }
 
   Database _wire2api_database(dynamic raw) {
     final arr = raw as List<dynamic>;
-    if (arr.length != 1)
-      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    if (arr.length != 0)
+      throw Exception('unexpected arr length: expect 0 but see ${arr.length}');
     return Database(
       bridge: this,
-      path: _wire2api_String(arr[0]),
     );
+  }
+
+  Definition _wire2api_definition(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return Definition(
+      definition: _wire2api_String(arr[0]),
+      example: _wire2api_opt_String(arr[1]),
+      synonyms: _wire2api_StringList(arr[2]),
+    );
+  }
+
+  Definitions _wire2api_definitions(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Definitions(
+      word: _wire2api_String(arr[0]),
+      meanings: _wire2api_list_meaning(arr[1]),
+    );
+  }
+
+  DocumentId _wire2api_document_id(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return DocumentId(
+      field0: _wire2api_u32(arr[0]),
+    );
+  }
+
+  double _wire2api_f64(dynamic raw) {
+    return raw as double;
+  }
+
+  int _wire2api_i32(dynamic raw) {
+    return raw as int;
   }
 
   List<Book> _wire2api_list_book(dynamic raw) {
     return (raw as List<dynamic>).map(_wire2api_book).toList();
+  }
+
+  List<Definition> _wire2api_list_definition(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_definition).toList();
+  }
+
+  List<Meaning> _wire2api_list_meaning(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_meaning).toList();
+  }
+
+  List<T> _wire2api_list_t(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_t).toList();
+  }
+
+  Meaning _wire2api_meaning(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Meaning(
+      partOfSpeech: _wire2api_String(arr[0]),
+      definitions: _wire2api_list_definition(arr[1]),
+    );
+  }
+
+  Meta _wire2api_meta(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return Meta(
+      title: _wire2api_opt_String(arr[0]),
+      author: _wire2api_opt_String(arr[1]),
+      cover: _wire2api_opt_uint_8_list(arr[2]),
+    );
+  }
+
+  String? _wire2api_opt_String(dynamic raw) {
+    return raw == null ? null : _wire2api_String(raw);
+  }
+
+  Uint8List? _wire2api_opt_uint_8_list(dynamic raw) {
+    return raw == null ? null : _wire2api_uint_8_list(raw);
+  }
+
+  Position _wire2api_position(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Position(
+      chapter: _wire2api_usize(arr[0]),
+      offset: _wire2api_f64(arr[1]),
+    );
+  }
+
+  T _wire2api_t(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return T(
+      path: _wire2api_String(arr[0]),
+      content: _wire2api_uint_8_list(arr[1]),
+    );
+  }
+
+  int _wire2api_u32(dynamic raw) {
+    return raw as int;
   }
 
   int _wire2api_u8(dynamic raw) {
@@ -255,15 +458,33 @@ class NativeImpl implements Native {
   void _wire2api_unit(dynamic raw) {
     return;
   }
+
+  int _wire2api_usize(dynamic raw) {
+    return castInt(raw);
+  }
 }
 
 // Section: api2wire
+
+@protected
+double api2wire_f64(double raw) {
+  return raw;
+}
+
+@protected
+int api2wire_u32(int raw) {
+  return raw;
+}
 
 @protected
 int api2wire_u8(int raw) {
   return raw;
 }
 
+@protected
+int api2wire_usize(int raw) {
+  return raw;
+}
 // Section: finalizer
 
 class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
@@ -279,7 +500,14 @@ class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
   @protected
   ffi.Pointer<wire_Database> api2wire_box_autoadd_database(Database raw) {
     final ptr = inner.new_box_autoadd_database_0();
-    _api_fill_to_wire_database(raw, ptr.ref);
+    return ptr;
+  }
+
+  @protected
+  ffi.Pointer<wire_DocumentId> api2wire_box_autoadd_document_id(
+      DocumentId raw) {
+    final ptr = inner.new_box_autoadd_document_id_0();
+    _api_fill_to_wire_document_id(raw, ptr.ref);
     return ptr;
   }
 
@@ -289,17 +517,21 @@ class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
     ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
     return ans;
   }
+
 // Section: finalizer
 
 // Section: api_fill_to_wire
 
-  void _api_fill_to_wire_box_autoadd_database(
-      Database apiObj, ffi.Pointer<wire_Database> wireObj) {
-    _api_fill_to_wire_database(apiObj, wireObj.ref);
+  void _api_fill_to_wire_box_autoadd_document_id(
+      DocumentId apiObj, ffi.Pointer<wire_DocumentId> wireObj) {
+    _api_fill_to_wire_document_id(apiObj, wireObj.ref);
   }
 
-  void _api_fill_to_wire_database(Database apiObj, wire_Database wireObj) {
-    wireObj.path = api2wire_String(apiObj.path);
+  void _api_fill_to_wire_database(Database apiObj, wire_Database wireObj) {}
+
+  void _api_fill_to_wire_document_id(
+      DocumentId apiObj, wire_DocumentId wireObj) {
+    wireObj.field0 = api2wire_u32(apiObj.field0);
   }
 }
 
@@ -401,57 +633,89 @@ class NativeWire implements FlutterRustBridgeWireBase {
   void wire_open_doc(
     int port_,
     ffi.Pointer<wire_uint_8_list> path,
+    int initial_chapter,
   ) {
     return _wire_open_doc(
       port_,
       path,
+      initial_chapter,
     );
   }
 
   late final _wire_open_docPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_open_doc');
+          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_uint_8_list>,
+              ffi.UintPtr)>>('wire_open_doc');
   late final _wire_open_doc = _wire_open_docPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>, int)>();
 
   void wire_go_next(
     int port_,
+    ffi.Pointer<wire_DocumentId> id,
   ) {
     return _wire_go_next(
       port_,
+      id,
     );
   }
 
-  late final _wire_go_nextPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>('wire_go_next');
-  late final _wire_go_next = _wire_go_nextPtr.asFunction<void Function(int)>();
+  late final _wire_go_nextPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_go_next');
+  late final _wire_go_next = _wire_go_nextPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
 
   void wire_go_prev(
     int port_,
+    ffi.Pointer<wire_DocumentId> id,
   ) {
     return _wire_go_prev(
       port_,
+      id,
     );
   }
 
-  late final _wire_go_prevPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>('wire_go_prev');
-  late final _wire_go_prev = _wire_go_prevPtr.asFunction<void Function(int)>();
+  late final _wire_go_prevPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_go_prev');
+  late final _wire_go_prev = _wire_go_prevPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
 
   void wire_get_content(
     int port_,
+    ffi.Pointer<wire_DocumentId> id,
   ) {
     return _wire_get_content(
       port_,
+      id,
     );
   }
 
-  late final _wire_get_contentPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
-          'wire_get_content');
-  late final _wire_get_content =
-      _wire_get_contentPtr.asFunction<void Function(int)>();
+  late final _wire_get_contentPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_get_content');
+  late final _wire_get_content = _wire_get_contentPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
+
+  void wire_get_resources(
+    int port_,
+    ffi.Pointer<wire_DocumentId> id,
+  ) {
+    return _wire_get_resources(
+      port_,
+      id,
+    );
+  }
+
+  late final _wire_get_resourcesPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_get_resources');
+  late final _wire_get_resources = _wire_get_resourcesPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
 
   void wire_auth(
     int port_,
@@ -511,43 +775,104 @@ class NativeWire implements FlutterRustBridgeWireBase {
   late final _wire_init_db = _wire_init_dbPtr
       .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
 
-  void wire_clear_db(
+  void wire_get_meta(
     int port_,
-    ffi.Pointer<wire_uint_8_list> path,
+    ffi.Pointer<wire_uint_8_list> id,
   ) {
-    return _wire_clear_db(
+    return _wire_get_meta(
       port_,
-      path,
+      id,
     );
   }
 
-  late final _wire_clear_dbPtr = _lookup<
+  late final _wire_get_metaPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_clear_db');
-  late final _wire_clear_db = _wire_clear_dbPtr
+              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_get_meta');
+  late final _wire_get_meta = _wire_get_metaPtr
       .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
 
-  void wire_add__method__Database(
+  void wire_clear_db(
+    int port_,
+  ) {
+    return _wire_clear_db(
+      port_,
+    );
+  }
+
+  late final _wire_clear_dbPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+          'wire_clear_db');
+  late final _wire_clear_db =
+      _wire_clear_dbPtr.asFunction<void Function(int)>();
+
+  void wire_get_definition(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> word,
+  ) {
+    return _wire_get_definition(
+      port_,
+      word,
+    );
+  }
+
+  late final _wire_get_definitionPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(ffi.Int64,
+              ffi.Pointer<wire_uint_8_list>)>>('wire_get_definition');
+  late final _wire_get_definition = _wire_get_definitionPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+
+  void wire_add_book__method__Database(
     int port_,
     ffi.Pointer<wire_Database> that,
     ffi.Pointer<wire_uint_8_list> path,
   ) {
-    return _wire_add__method__Database(
+    return _wire_add_book__method__Database(
       port_,
       that,
       path,
     );
   }
 
-  late final _wire_add__method__DatabasePtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_Database>,
-              ffi.Pointer<wire_uint_8_list>)>>('wire_add__method__Database');
-  late final _wire_add__method__Database =
-      _wire_add__method__DatabasePtr.asFunction<
+  late final _wire_add_book__method__DatabasePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Int64, ffi.Pointer<wire_Database>,
+                  ffi.Pointer<wire_uint_8_list>)>>(
+      'wire_add_book__method__Database');
+  late final _wire_add_book__method__Database =
+      _wire_add_book__method__DatabasePtr.asFunction<
           void Function(int, ffi.Pointer<wire_Database>,
               ffi.Pointer<wire_uint_8_list>)>();
+
+  void wire_update_progress__method__Database(
+    int port_,
+    ffi.Pointer<wire_Database> that,
+    ffi.Pointer<wire_uint_8_list> id,
+    int chapter,
+    double offset,
+  ) {
+    return _wire_update_progress__method__Database(
+      port_,
+      that,
+      id,
+      chapter,
+      offset,
+    );
+  }
+
+  late final _wire_update_progress__method__DatabasePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64,
+              ffi.Pointer<wire_Database>,
+              ffi.Pointer<wire_uint_8_list>,
+              ffi.UintPtr,
+              ffi.Double)>>('wire_update_progress__method__Database');
+  late final _wire_update_progress__method__Database =
+      _wire_update_progress__method__DatabasePtr.asFunction<
+          void Function(int, ffi.Pointer<wire_Database>,
+              ffi.Pointer<wire_uint_8_list>, int, double)>();
 
   void wire_get_books__method__Database(
     int port_,
@@ -576,6 +901,16 @@ class NativeWire implements FlutterRustBridgeWireBase {
           'new_box_autoadd_database_0');
   late final _new_box_autoadd_database_0 = _new_box_autoadd_database_0Ptr
       .asFunction<ffi.Pointer<wire_Database> Function()>();
+
+  ffi.Pointer<wire_DocumentId> new_box_autoadd_document_id_0() {
+    return _new_box_autoadd_document_id_0();
+  }
+
+  late final _new_box_autoadd_document_id_0Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_DocumentId> Function()>>(
+          'new_box_autoadd_document_id_0');
+  late final _new_box_autoadd_document_id_0 = _new_box_autoadd_document_id_0Ptr
+      .asFunction<ffi.Pointer<wire_DocumentId> Function()>();
 
   ffi.Pointer<wire_uint_8_list> new_uint_8_list_0(
     int len,
@@ -616,9 +951,12 @@ class wire_uint_8_list extends ffi.Struct {
   external int len;
 }
 
-class wire_Database extends ffi.Struct {
-  external ffi.Pointer<wire_uint_8_list> path;
+class wire_DocumentId extends ffi.Struct {
+  @ffi.Uint32()
+  external int field0;
 }
+
+class wire_Database extends ffi.Opaque {}
 
 typedef DartPostCObjectFnType = ffi.Pointer<
     ffi.NativeFunction<ffi.Bool Function(DartPort, ffi.Pointer<ffi.Void>)>>;

@@ -14,6 +14,7 @@ class Library extends StatefulWidget {
 
 class _LibraryState extends State<Library> {
   List<Book>? _books;
+  Database? db;
 
   @override
   void initState() {
@@ -25,9 +26,9 @@ class _LibraryState extends State<Library> {
   Future<void> _initBooks() async {
     final directory = await getApplicationDocumentsDirectory();
 
-    final db = await api.initDb(path: directory.path);
+    db = await api.initDb(path: directory.path);
 
-    final books = await db.getBooks();
+    final books = await db!.getBooks();
 
     setState(() {
       _books = books;
@@ -35,11 +36,7 @@ class _LibraryState extends State<Library> {
   }
 
   Future<void> _add(String path) async {
-    final directory = await getApplicationDocumentsDirectory();
-
-    final db = await api.initDb(path: directory.path);
-
-    final books = await db.add(path: path);
+    final books = await db!.addBook(path: path);
 
     setState(() {
       _books = books;
@@ -65,7 +62,9 @@ class _LibraryState extends State<Library> {
   }
 
   Widget _body() {
+    debugPrint(_books.toString());
     if (_books == null) {
+      debugPrint('arstars');
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -82,21 +81,47 @@ class _LibraryState extends State<Library> {
     );
   }
 
+  Future<Meta> getMeta(Book book) async {
+    try {
+      final meta = await api.getMeta(id: book.uuid);
+
+      return meta;
+    } catch (e) {
+      debugPrint(e.toString());
+      rethrow;
+    }
+  }
+
   Widget _bookItem(Book book) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          title: Text(book.uuid),
-          subtitle: Text(book.path),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => Reader(path: book.path),
+    return FutureBuilder(
+        future: getMeta(book),
+        builder: (context, AsyncSnapshot<Meta> snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Card(
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                title: Text(snapshot.data!.title ?? ''),
+                subtitle: Text(snapshot.data?.author ?? ''),
+                leading: snapshot.data!.cover != null
+                    ? Image.memory(snapshot.data!.cover!)
+                    : null,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => Reader(
+                      book: book,
+                      db: db!,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
-    );
+          );
+        });
   }
 }
