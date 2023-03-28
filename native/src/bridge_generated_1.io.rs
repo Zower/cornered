@@ -190,11 +190,23 @@ impl NewWithNullPtr for wire_Database {
     }
 }
 
+impl Default for wire_Database {
+    fn default() -> Self {
+        Self::new_with_null_ptr()
+    }
+}
+
 impl NewWithNullPtr for wire_DocumentId {
     fn new_with_null_ptr() -> Self {
         Self {
             field0: Default::default(),
         }
+    }
+}
+
+impl Default for wire_DocumentId {
+    fn default() -> Self {
+        Self::new_with_null_ptr()
     }
 }
 

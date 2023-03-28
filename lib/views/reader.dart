@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:cornered/common/common_page.dart';
 import 'package:cornered/common/future_handled_builder.dart';
+import 'package:cornered/gen/bridge_generated_1.dart';
 import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/smooth_scroll.dart';
 import 'package:flutter/material.dart';

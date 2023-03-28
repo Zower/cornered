@@ -1,4 +1,5 @@
 import 'package:cornered/common/common_page.dart';
+import 'package:cornered/gen/bridge_generated_1.dart';
 import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/views/reader.dart';
 import 'package:file_picker/file_picker.dart';
@@ -15,10 +16,23 @@ class Library extends StatefulWidget {
 class _LibraryState extends State<Library> {
   List<Book>? _books;
   Database? db;
+  double testx = 0;
 
   @override
   void initState() {
     super.initState();
+
+    test.multiply(a: 2, b: 4).then(
+      (value) {
+        debugPrint('multiply: $value');
+
+        setState(
+          () {
+            testx = value.toDouble();
+          },
+        );
+      },
+    );
 
     _initBooks();
   }
@@ -74,7 +88,9 @@ class _LibraryState extends State<Library> {
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: _books!.map((book) => _bookItem(book)).toList(),
+        children: _books!
+            .map((book) => _bookItem(book))
+            .followedBy([Text(testx.toString())]).toList(),
       ),
     );
   }
