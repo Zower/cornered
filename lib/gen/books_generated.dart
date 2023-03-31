@@ -7,49 +7,48 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 import 'package:uuid/uuid.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 
 import 'dart:ffi' as ffi;
 
-abstract class Api {
-  Future<DocumentId> openDoc(
+part 'books_generated.freezed.dart';
+
+abstract class Books {
+  Future<OpenDocumentId> openDoc(
       {required String path, required int initialChapter, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kOpenDocConstMeta;
 
-  Future<ContentBlock> goNext({required DocumentId id, dynamic hint});
+  Future<ContentBlock> goNext({required OpenDocumentId id, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGoNextConstMeta;
 
-  Future<ContentBlock> goPrev({required DocumentId id, dynamic hint});
+  Future<ContentBlock> goPrev({required OpenDocumentId id, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGoPrevConstMeta;
 
-  Future<ContentBlock> getContent({required DocumentId id, dynamic hint});
+  Future<GoUrlResult> goUrl(
+      {required OpenDocumentId id, required String url, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGoUrlConstMeta;
+
+  Future<ContentBlock> getContent({required OpenDocumentId id, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGetContentConstMeta;
 
   Future<Uint8List> getResource(
-      {required DocumentId id, required String path, dynamic hint});
+      {required OpenDocumentId id, required String path, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGetResourceConstMeta;
 
-  Future<String> auth({dynamic hint});
+  Future<List<TocEntry>> getToc({required OpenDocumentId id, dynamic hint});
 
-  FlutterRustBridgeTaskConstMeta get kAuthConstMeta;
-
-  Future<void> poll({dynamic hint});
-
-  FlutterRustBridgeTaskConstMeta get kPollConstMeta;
-
-  Future<void> sync2({required String path, dynamic hint});
-
-  FlutterRustBridgeTaskConstMeta get kSync2ConstMeta;
+  FlutterRustBridgeTaskConstMeta get kGetTocConstMeta;
 
   Future<Database> initDb({required String path, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kInitDbConstMeta;
 
-  /// Returns the metadata that might be useful in a "bookshelf" view
   Future<Meta> getMeta({required String id, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGetMetaConstMeta;
@@ -96,21 +95,25 @@ class Book {
 
 class ContentBlock {
   final String content;
+  final int chapter;
   final ContentType contentType;
 
   const ContentBlock({
     required this.content,
+    required this.chapter,
     required this.contentType,
   });
 }
 
-enum ContentType {
-  Text,
-  Html,
+@freezed
+class ContentType with _$ContentType {
+  const factory ContentType.html({
+    String? extraCss,
+  }) = ContentType_Html;
 }
 
 class Database {
-  final Api bridge;
+  final Books bridge;
 
   const Database({
     required this.bridge,
@@ -161,11 +164,13 @@ class Definitions {
   });
 }
 
-class DocumentId {
-  final int field0;
+class GoUrlResult {
+  final ContentBlock content;
+  final int chapter;
 
-  const DocumentId({
-    required this.field0,
+  const GoUrlResult({
+    required this.content,
+    required this.chapter,
   });
 }
 
@@ -191,6 +196,14 @@ class Meta {
   });
 }
 
+class OpenDocumentId {
+  final int field0;
+
+  const OpenDocumentId({
+    required this.field0,
+  });
+}
+
 class Position {
   final int chapter;
   final double offset;
@@ -201,21 +214,34 @@ class Position {
   });
 }
 
-class ApiImpl implements Api {
-  final ApiPlatform _platform;
-  factory ApiImpl(ExternalLibrary dylib) => ApiImpl.raw(ApiPlatform(dylib));
+class TocEntry {
+  final String label;
+  final String url;
+  final int count;
+
+  const TocEntry({
+    required this.label,
+    required this.url,
+    required this.count,
+  });
+}
+
+class BooksImpl implements Books {
+  final BooksPlatform _platform;
+  factory BooksImpl(ExternalLibrary dylib) =>
+      BooksImpl.raw(BooksPlatform(dylib));
 
   /// Only valid on web/WASM platforms.
-  factory ApiImpl.wasm(FutureOr<WasmModule> module) =>
-      ApiImpl(module as ExternalLibrary);
-  ApiImpl.raw(this._platform);
-  Future<DocumentId> openDoc(
+  factory BooksImpl.wasm(FutureOr<WasmModule> module) =>
+      BooksImpl(module as ExternalLibrary);
+  BooksImpl.raw(this._platform);
+  Future<OpenDocumentId> openDoc(
       {required String path, required int initialChapter, dynamic hint}) {
     var arg0 = _platform.api2wire_String(path);
     var arg1 = api2wire_usize(initialChapter);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_open_doc(port_, arg0, arg1),
-      parseSuccessData: _wire2api_document_id,
+      parseSuccessData: _wire2api_open_document_id,
       constMeta: kOpenDocConstMeta,
       argValues: [path, initialChapter],
       hint: hint,
@@ -228,8 +254,8 @@ class ApiImpl implements Api {
         argNames: ["path", "initialChapter"],
       );
 
-  Future<ContentBlock> goNext({required DocumentId id, dynamic hint}) {
-    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
+  Future<ContentBlock> goNext({required OpenDocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_open_document_id(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_go_next(port_, arg0),
       parseSuccessData: _wire2api_content_block,
@@ -245,8 +271,8 @@ class ApiImpl implements Api {
         argNames: ["id"],
       );
 
-  Future<ContentBlock> goPrev({required DocumentId id, dynamic hint}) {
-    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
+  Future<ContentBlock> goPrev({required OpenDocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_open_document_id(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_go_prev(port_, arg0),
       parseSuccessData: _wire2api_content_block,
@@ -262,8 +288,27 @@ class ApiImpl implements Api {
         argNames: ["id"],
       );
 
-  Future<ContentBlock> getContent({required DocumentId id, dynamic hint}) {
-    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
+  Future<GoUrlResult> goUrl(
+      {required OpenDocumentId id, required String url, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_open_document_id(id);
+    var arg1 = _platform.api2wire_String(url);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_go_url(port_, arg0, arg1),
+      parseSuccessData: _wire2api_go_url_result,
+      constMeta: kGoUrlConstMeta,
+      argValues: [id, url],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGoUrlConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "go_url",
+        argNames: ["id", "url"],
+      );
+
+  Future<ContentBlock> getContent({required OpenDocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_open_document_id(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_get_content(port_, arg0),
       parseSuccessData: _wire2api_content_block,
@@ -280,8 +325,8 @@ class ApiImpl implements Api {
       );
 
   Future<Uint8List> getResource(
-      {required DocumentId id, required String path, dynamic hint}) {
-    var arg0 = _platform.api2wire_box_autoadd_document_id(id);
+      {required OpenDocumentId id, required String path, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_open_document_id(id);
     var arg1 = _platform.api2wire_String(path);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_get_resource(port_, arg0, arg1),
@@ -298,53 +343,21 @@ class ApiImpl implements Api {
         argNames: ["id", "path"],
       );
 
-  Future<String> auth({dynamic hint}) {
+  Future<List<TocEntry>> getToc({required OpenDocumentId id, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_open_document_id(id);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_auth(port_),
-      parseSuccessData: _wire2api_String,
-      constMeta: kAuthConstMeta,
-      argValues: [],
+      callFfi: (port_) => _platform.inner.wire_get_toc(port_, arg0),
+      parseSuccessData: _wire2api_list_toc_entry,
+      constMeta: kGetTocConstMeta,
+      argValues: [id],
       hint: hint,
     ));
   }
 
-  FlutterRustBridgeTaskConstMeta get kAuthConstMeta =>
+  FlutterRustBridgeTaskConstMeta get kGetTocConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
-        debugName: "auth",
-        argNames: [],
-      );
-
-  Future<void> poll({dynamic hint}) {
-    return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_poll(port_),
-      parseSuccessData: _wire2api_unit,
-      constMeta: kPollConstMeta,
-      argValues: [],
-      hint: hint,
-    ));
-  }
-
-  FlutterRustBridgeTaskConstMeta get kPollConstMeta =>
-      const FlutterRustBridgeTaskConstMeta(
-        debugName: "poll",
-        argNames: [],
-      );
-
-  Future<void> sync2({required String path, dynamic hint}) {
-    var arg0 = _platform.api2wire_String(path);
-    return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_sync2(port_, arg0),
-      parseSuccessData: _wire2api_unit,
-      constMeta: kSync2ConstMeta,
-      argValues: [path],
-      hint: hint,
-    ));
-  }
-
-  FlutterRustBridgeTaskConstMeta get kSync2ConstMeta =>
-      const FlutterRustBridgeTaskConstMeta(
-        debugName: "sync2",
-        argNames: ["path"],
+        debugName: "get_toc",
+        argNames: ["id"],
       );
 
   Future<Database> initDb({required String path, dynamic hint}) {
@@ -506,16 +519,24 @@ class ApiImpl implements Api {
 
   ContentBlock _wire2api_content_block(dynamic raw) {
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return ContentBlock(
       content: _wire2api_String(arr[0]),
-      contentType: _wire2api_content_type(arr[1]),
+      chapter: _wire2api_usize(arr[1]),
+      contentType: _wire2api_content_type(arr[2]),
     );
   }
 
   ContentType _wire2api_content_type(dynamic raw) {
-    return ContentType.values[raw];
+    switch (raw[0]) {
+      case 0:
+        return ContentType_Html(
+          extraCss: _wire2api_opt_String(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   Database _wire2api_database(dynamic raw) {
@@ -548,21 +569,18 @@ class ApiImpl implements Api {
     );
   }
 
-  DocumentId _wire2api_document_id(dynamic raw) {
-    final arr = raw as List<dynamic>;
-    if (arr.length != 1)
-      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
-    return DocumentId(
-      field0: _wire2api_u32(arr[0]),
-    );
-  }
-
   double _wire2api_f64(dynamic raw) {
     return raw as double;
   }
 
-  int _wire2api_i32(dynamic raw) {
-    return raw as int;
+  GoUrlResult _wire2api_go_url_result(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return GoUrlResult(
+      content: _wire2api_content_block(arr[0]),
+      chapter: _wire2api_usize(arr[1]),
+    );
   }
 
   List<Book> _wire2api_list_book(dynamic raw) {
@@ -575,6 +593,10 @@ class ApiImpl implements Api {
 
   List<Meaning> _wire2api_list_meaning(dynamic raw) {
     return (raw as List<dynamic>).map(_wire2api_meaning).toList();
+  }
+
+  List<TocEntry> _wire2api_list_toc_entry(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_toc_entry).toList();
   }
 
   Meaning _wire2api_meaning(dynamic raw) {
@@ -598,6 +620,15 @@ class ApiImpl implements Api {
     );
   }
 
+  OpenDocumentId _wire2api_open_document_id(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return OpenDocumentId(
+      field0: _wire2api_u64(arr[0]),
+    );
+  }
+
   String? _wire2api_opt_String(dynamic raw) {
     return raw == null ? null : _wire2api_String(raw);
   }
@@ -616,8 +647,19 @@ class ApiImpl implements Api {
     );
   }
 
-  int _wire2api_u32(dynamic raw) {
-    return raw as int;
+  TocEntry _wire2api_toc_entry(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return TocEntry(
+      label: _wire2api_String(arr[0]),
+      url: _wire2api_String(arr[1]),
+      count: _wire2api_usize(arr[2]),
+    );
+  }
+
+  int _wire2api_u64(dynamic raw) {
+    return castInt(raw);
   }
 
   int _wire2api_u8(dynamic raw) {
@@ -645,11 +687,6 @@ double api2wire_f64(double raw) {
 }
 
 @protected
-int api2wire_u32(int raw) {
-  return raw;
-}
-
-@protected
 int api2wire_u8(int raw) {
   return raw;
 }
@@ -660,8 +697,8 @@ int api2wire_usize(int raw) {
 }
 // Section: finalizer
 
-class ApiPlatform extends FlutterRustBridgeBase<ApiWire> {
-  ApiPlatform(ffi.DynamicLibrary dylib) : super(ApiWire(dylib));
+class BooksPlatform extends FlutterRustBridgeBase<BooksWire> {
+  BooksPlatform(ffi.DynamicLibrary dylib) : super(BooksWire(dylib));
 
 // Section: api2wire
 
@@ -677,11 +714,16 @@ class ApiPlatform extends FlutterRustBridgeBase<ApiWire> {
   }
 
   @protected
-  ffi.Pointer<wire_DocumentId> api2wire_box_autoadd_document_id(
-      DocumentId raw) {
-    final ptr = inner.new_box_autoadd_document_id_0();
-    _api_fill_to_wire_document_id(raw, ptr.ref);
+  ffi.Pointer<wire_OpenDocumentId> api2wire_box_autoadd_open_document_id(
+      OpenDocumentId raw) {
+    final ptr = inner.new_box_autoadd_open_document_id_0();
+    _api_fill_to_wire_open_document_id(raw, ptr.ref);
     return ptr;
+  }
+
+  @protected
+  int api2wire_u64(int raw) {
+    return raw;
   }
 
   @protected
@@ -695,16 +737,16 @@ class ApiPlatform extends FlutterRustBridgeBase<ApiWire> {
 
 // Section: api_fill_to_wire
 
-  void _api_fill_to_wire_box_autoadd_document_id(
-      DocumentId apiObj, ffi.Pointer<wire_DocumentId> wireObj) {
-    _api_fill_to_wire_document_id(apiObj, wireObj.ref);
+  void _api_fill_to_wire_box_autoadd_open_document_id(
+      OpenDocumentId apiObj, ffi.Pointer<wire_OpenDocumentId> wireObj) {
+    _api_fill_to_wire_open_document_id(apiObj, wireObj.ref);
   }
 
   void _api_fill_to_wire_database(Database apiObj, wire_Database wireObj) {}
 
-  void _api_fill_to_wire_document_id(
-      DocumentId apiObj, wire_DocumentId wireObj) {
-    wireObj.field0 = api2wire_u32(apiObj.field0);
+  void _api_fill_to_wire_open_document_id(
+      OpenDocumentId apiObj, wire_OpenDocumentId wireObj) {
+    wireObj.field0 = api2wire_u64(apiObj.field0);
   }
 }
 
@@ -716,7 +758,7 @@ class ApiPlatform extends FlutterRustBridgeBase<ApiWire> {
 // ignore_for_file: type=lint
 
 /// generated by flutter_rust_bridge
-class ApiWire implements FlutterRustBridgeWireBase {
+class BooksWire implements FlutterRustBridgeWireBase {
   @internal
   late final dartApi = DartApiDl(init_frb_dart_api_dl);
 
@@ -725,10 +767,11 @@ class ApiWire implements FlutterRustBridgeWireBase {
       _lookup;
 
   /// The symbols are looked up in [dynamicLibrary].
-  ApiWire(ffi.DynamicLibrary dynamicLibrary) : _lookup = dynamicLibrary.lookup;
+  BooksWire(ffi.DynamicLibrary dynamicLibrary)
+      : _lookup = dynamicLibrary.lookup;
 
   /// The symbols are looked up with [lookup].
-  ApiWire.fromLookup(
+  BooksWire.fromLookup(
       ffi.Pointer<T> Function<T extends ffi.NativeType>(String symbolName)
           lookup)
       : _lookup = lookup;
@@ -824,7 +867,7 @@ class ApiWire implements FlutterRustBridgeWireBase {
 
   void wire_go_next(
     int port_,
-    ffi.Pointer<wire_DocumentId> id,
+    ffi.Pointer<wire_OpenDocumentId> id,
   ) {
     return _wire_go_next(
       port_,
@@ -835,13 +878,13 @@ class ApiWire implements FlutterRustBridgeWireBase {
   late final _wire_go_nextPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_go_next');
+              ffi.Int64, ffi.Pointer<wire_OpenDocumentId>)>>('wire_go_next');
   late final _wire_go_next = _wire_go_nextPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
+      .asFunction<void Function(int, ffi.Pointer<wire_OpenDocumentId>)>();
 
   void wire_go_prev(
     int port_,
-    ffi.Pointer<wire_DocumentId> id,
+    ffi.Pointer<wire_OpenDocumentId> id,
   ) {
     return _wire_go_prev(
       port_,
@@ -852,13 +895,33 @@ class ApiWire implements FlutterRustBridgeWireBase {
   late final _wire_go_prevPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_go_prev');
+              ffi.Int64, ffi.Pointer<wire_OpenDocumentId>)>>('wire_go_prev');
   late final _wire_go_prev = _wire_go_prevPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
+      .asFunction<void Function(int, ffi.Pointer<wire_OpenDocumentId>)>();
+
+  void wire_go_url(
+    int port_,
+    ffi.Pointer<wire_OpenDocumentId> id,
+    ffi.Pointer<wire_uint_8_list> url,
+  ) {
+    return _wire_go_url(
+      port_,
+      id,
+      url,
+    );
+  }
+
+  late final _wire_go_urlPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_OpenDocumentId>,
+              ffi.Pointer<wire_uint_8_list>)>>('wire_go_url');
+  late final _wire_go_url = _wire_go_urlPtr.asFunction<
+      void Function(int, ffi.Pointer<wire_OpenDocumentId>,
+          ffi.Pointer<wire_uint_8_list>)>();
 
   void wire_get_content(
     int port_,
-    ffi.Pointer<wire_DocumentId> id,
+    ffi.Pointer<wire_OpenDocumentId> id,
   ) {
     return _wire_get_content(
       port_,
@@ -868,14 +931,14 @@ class ApiWire implements FlutterRustBridgeWireBase {
 
   late final _wire_get_contentPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_DocumentId>)>>('wire_get_content');
+          ffi.Void Function(ffi.Int64,
+              ffi.Pointer<wire_OpenDocumentId>)>>('wire_get_content');
   late final _wire_get_content = _wire_get_contentPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_DocumentId>)>();
+      .asFunction<void Function(int, ffi.Pointer<wire_OpenDocumentId>)>();
 
   void wire_get_resource(
     int port_,
-    ffi.Pointer<wire_DocumentId> id,
+    ffi.Pointer<wire_OpenDocumentId> id,
     ffi.Pointer<wire_uint_8_list> path,
   ) {
     return _wire_get_resource(
@@ -887,52 +950,28 @@ class ApiWire implements FlutterRustBridgeWireBase {
 
   late final _wire_get_resourcePtr = _lookup<
       ffi.NativeFunction<
-          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_DocumentId>,
+          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_OpenDocumentId>,
               ffi.Pointer<wire_uint_8_list>)>>('wire_get_resource');
   late final _wire_get_resource = _wire_get_resourcePtr.asFunction<
-      void Function(
-          int, ffi.Pointer<wire_DocumentId>, ffi.Pointer<wire_uint_8_list>)>();
+      void Function(int, ffi.Pointer<wire_OpenDocumentId>,
+          ffi.Pointer<wire_uint_8_list>)>();
 
-  void wire_auth(
+  void wire_get_toc(
     int port_,
+    ffi.Pointer<wire_OpenDocumentId> id,
   ) {
-    return _wire_auth(
+    return _wire_get_toc(
       port_,
+      id,
     );
   }
 
-  late final _wire_authPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>('wire_auth');
-  late final _wire_auth = _wire_authPtr.asFunction<void Function(int)>();
-
-  void wire_poll(
-    int port_,
-  ) {
-    return _wire_poll(
-      port_,
-    );
-  }
-
-  late final _wire_pollPtr =
-      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>('wire_poll');
-  late final _wire_poll = _wire_pollPtr.asFunction<void Function(int)>();
-
-  void wire_sync2(
-    int port_,
-    ffi.Pointer<wire_uint_8_list> path,
-  ) {
-    return _wire_sync2(
-      port_,
-      path,
-    );
-  }
-
-  late final _wire_sync2Ptr = _lookup<
+  late final _wire_get_tocPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_sync2');
-  late final _wire_sync2 = _wire_sync2Ptr
-      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+              ffi.Int64, ffi.Pointer<wire_OpenDocumentId>)>>('wire_get_toc');
+  late final _wire_get_toc = _wire_get_tocPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_OpenDocumentId>)>();
 
   void wire_init_db(
     int port_,
@@ -1078,15 +1117,16 @@ class ApiWire implements FlutterRustBridgeWireBase {
   late final _new_box_autoadd_database_0 = _new_box_autoadd_database_0Ptr
       .asFunction<ffi.Pointer<wire_Database> Function()>();
 
-  ffi.Pointer<wire_DocumentId> new_box_autoadd_document_id_0() {
-    return _new_box_autoadd_document_id_0();
+  ffi.Pointer<wire_OpenDocumentId> new_box_autoadd_open_document_id_0() {
+    return _new_box_autoadd_open_document_id_0();
   }
 
-  late final _new_box_autoadd_document_id_0Ptr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<wire_DocumentId> Function()>>(
-          'new_box_autoadd_document_id_0');
-  late final _new_box_autoadd_document_id_0 = _new_box_autoadd_document_id_0Ptr
-      .asFunction<ffi.Pointer<wire_DocumentId> Function()>();
+  late final _new_box_autoadd_open_document_id_0Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_OpenDocumentId> Function()>>(
+          'new_box_autoadd_open_document_id_0');
+  late final _new_box_autoadd_open_document_id_0 =
+      _new_box_autoadd_open_document_id_0Ptr
+          .asFunction<ffi.Pointer<wire_OpenDocumentId> Function()>();
 
   ffi.Pointer<wire_uint_8_list> new_uint_8_list_0(
     int len,
@@ -1116,6 +1156,28 @@ class ApiWire implements FlutterRustBridgeWireBase {
           'free_WireSyncReturn');
   late final _free_WireSyncReturn =
       _free_WireSyncReturnPtr.asFunction<void Function(WireSyncReturn)>();
+
+  ffi.Pointer<wire_DeviceFlowResponse>
+      new_box_autoadd_device_flow_response_1() {
+    return _new_box_autoadd_device_flow_response_1();
+  }
+
+  late final _new_box_autoadd_device_flow_response_1Ptr = _lookup<
+          ffi.NativeFunction<ffi.Pointer<wire_DeviceFlowResponse> Function()>>(
+      'new_box_autoadd_device_flow_response_1');
+  late final _new_box_autoadd_device_flow_response_1 =
+      _new_box_autoadd_device_flow_response_1Ptr
+          .asFunction<ffi.Pointer<wire_DeviceFlowResponse> Function()>();
+
+  ffi.Pointer<wire_GithubUser> new_box_autoadd_github_user_1() {
+    return _new_box_autoadd_github_user_1();
+  }
+
+  late final _new_box_autoadd_github_user_1Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_GithubUser> Function()>>(
+          'new_box_autoadd_github_user_1');
+  late final _new_box_autoadd_github_user_1 = _new_box_autoadd_github_user_1Ptr
+      .asFunction<ffi.Pointer<wire_GithubUser> Function()>();
 }
 
 class _Dart_Handle extends ffi.Opaque {}
@@ -1127,12 +1189,30 @@ class wire_uint_8_list extends ffi.Struct {
   external int len;
 }
 
-class wire_DocumentId extends ffi.Struct {
-  @ffi.Uint32()
+class wire_OpenDocumentId extends ffi.Struct {
+  @ffi.Uint64()
   external int field0;
 }
 
 class wire_Database extends ffi.Opaque {}
+
+class wire_DeviceFlowResponse extends ffi.Struct {
+  external ffi.Pointer<wire_uint_8_list> device_code;
+
+  external ffi.Pointer<wire_uint_8_list> user_code;
+
+  external ffi.Pointer<wire_uint_8_list> verification_uri;
+
+  @ffi.Uint64()
+  external int interval;
+}
+
+class wire_GithubUser extends ffi.Struct {
+  external ffi.Pointer<wire_uint_8_list> login;
+
+  @ffi.Uint64()
+  external int id;
+}
 
 typedef DartPostCObjectFnType = ffi.Pointer<
     ffi.NativeFunction<ffi.Bool Function(DartPort, ffi.Pointer<ffi.Void>)>>;

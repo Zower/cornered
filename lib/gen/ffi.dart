@@ -4,15 +4,10 @@
 import 'dart:ffi';
 import 'dart:io' as io;
 
-import 'package:cornered/gen/bridge_generated_1.dart';
-import 'package:cornered/gen/bridge_generated_2.dart';
+import 'package:cornered/gen/books_generated.dart';
+import 'package:cornered/gen/util_generated.dart';
 
-// import 'bridge_definitions_1.dart';
-// import 'bridge_generated.dart';
-//
-// export 'bridge_definitions_1.dart';
-// // Re-export the bridge so it is only necessary to import this file.
-// export 'bridge_generated.dart';
+export 'books_generated.dart';
 
 const _base = 'native';
 
@@ -20,10 +15,10 @@ const _base = 'native';
 // but rather directly **linked** against the binary.
 final _dylib = io.Platform.isWindows ? '$_base.dll' : 'lib$_base.so';
 
-final Api api = ApiImpl(io.Platform.isIOS || io.Platform.isMacOS
+final Books booksApi = BooksImpl(io.Platform.isIOS || io.Platform.isMacOS
     ? DynamicLibrary.executable()
     : DynamicLibrary.open(_dylib));
 
-final Test test = TestImpl(io.Platform.isIOS || io.Platform.isMacOS
+final Util utilsApi = UtilImpl(io.Platform.isIOS || io.Platform.isMacOS
     ? DynamicLibrary.executable()
     : DynamicLibrary.open(_dylib));

@@ -1,14 +1,10 @@
 import 'package:cornered/gen/ffi.dart';
+import 'package:cornered/views/library.dart';
 import 'package:flutter/material.dart';
+import 'package:page_transition/page_transition.dart';
 
 class CommonPage extends StatelessWidget {
-  const CommonPage(
-      {Key? key,
-      required this.title,
-      required this.child,
-      this.floatingActionButton,
-      this.actions = const []})
-      : super(key: key);
+  const CommonPage({Key? key, required this.title, required this.child, this.floatingActionButton, this.actions = const []}) : super(key: key);
 
   final String title;
   final Widget child;
@@ -20,13 +16,13 @@ class CommonPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(),
-      drawer: _drawer(),
+      drawer: _drawer(context),
       floatingActionButton: floatingActionButton,
       body: child,
     );
   }
 
-  Drawer _drawer() {
+  Drawer _drawer(BuildContext context) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -38,9 +34,21 @@ class CommonPage extends StatelessWidget {
             child: Text('Cornered'),
           ),
           ListTile(
+            leading: const Icon(Icons.library_books),
+            title: const Text('Library'),
+            onTap: () async {
+              Navigator.pushAndRemoveUntil(
+                context,
+                PageTransition(child: const Library(), type: PageTransitionType.fade),
+                ModalRoute.withName('/'),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.clear),
             title: const Text('Clear database'),
             onTap: () async {
-              api.clearDb();
+              booksApi.clearDb();
             },
           ),
         ],

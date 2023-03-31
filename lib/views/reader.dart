@@ -4,16 +4,16 @@ import 'dart:typed_data';
 import 'package:collection/collection.dart';
 import 'package:cornered/common/common_page.dart';
 import 'package:cornered/common/future_handled_builder.dart';
-import 'package:cornered/gen/bridge_generated_1.dart';
+import 'package:cornered/common/preferences.dart';
 import 'package:cornered/gen/ffi.dart';
+import 'package:cornered/gen/util_generated.dart';
 import 'package:cornered/smooth_scroll.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class Reader extends StatefulWidget {
-  const Reader({Key? key, required this.book, required this.db})
-      : super(key: key);
+  const Reader({Key? key, required this.book, required this.db}) : super(key: key);
 
   final Book book;
   final Database db;
@@ -23,12 +23,19 @@ class Reader extends StatefulWidget {
 }
 
 class _ReaderState extends State<Reader> {
-  DocumentId? _id;
-  String? _currentContent;
+  OpenDocumentId? _id;
+  ContentBlock? _currentContent;
   int _chapter = 0;
   final ValueNotifier<String> _currentSelection = ValueNotifier('');
+  final ValueNotifier<bool> _isSyncing = ValueNotifier(false);
+
+  final Map<String, Uint8List> _images = {};
+
+  TextStyle Function() _textStyle = GoogleFonts.ebGaramond;
 
   double _fontSize = 18;
+  double _paddingPercent = 32;
+  // bool _showIcons = true;
 
   double _offset = 0;
 
@@ -42,23 +49,13 @@ class _ReaderState extends State<Reader> {
   }
 
   void _init() async {
-    final id =
-        await api.openDoc(path: widget.book.path, initialChapter: _chapter);
+    final id = await booksApi.openDoc(path: widget.book.path, initialChapter: _chapter);
 
     setState(() {
       _id = id;
     });
 
-    await _setContent();
-  }
-
-  Future<void> _setContent() async {
-    final content = await api.getContent(id: _id!);
-
-    setState(() {
-      // TODO: type of text
-      _currentContent = content.content;
-    });
+    await _getAndSetContent();
   }
 
   @override
@@ -79,44 +76,7 @@ class _ReaderState extends State<Reader> {
       },
       child: CommonPage(
         title: 'Reader',
-        actions: [
-          PopupMenuButton(
-            itemBuilder: (context) => <PopupMenuEntry<dynamic>>[
-              PopupMenuWidget(
-                child: StatefulBuilder(builder: (context, setInnerState) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                    child: Card(
-                      elevation: 4,
-                      color: Colors.grey.shade400,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 16),
-                        title: Text('Font size: ${_fontSize.roundToDouble()}'),
-                        subtitle: Slider(
-                          value: _fontSize.roundToDouble(),
-                          max: 35,
-                          onChanged: (val) {
-                            setInnerState(() {
-                              _fontSize = val;
-                            });
-                          },
-                          onChangeEnd: (val) {
-                            setState(() {
-                              setInnerState(() {
-                                _fontSize = val;
-                              });
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          )
-        ],
+        actions: _actions(),
         child: _body(),
       ),
     );
@@ -129,164 +89,420 @@ class _ReaderState extends State<Reader> {
       );
     }
 
-    return GestureDetector(
-      onHorizontalDragEnd: (r) async {
-        if (r.primaryVelocity! > 100) {
-          final value = await api.goPrev(id: _id!);
+    return Stack(
+      children: [
+        GestureDetector(
+          onHorizontalDragEnd: (r) async {
+            if (r.primaryVelocity! > 100) {
+              await _goPrev();
+            } else if (r.primaryVelocity! < -110) {
+              await _goNext();
+            }
+          },
+          child: SelectionArea(
+            onSelectionChanged: (selection) {
+              final newSelection = selection?.plainText ?? '';
 
-          setState(() {
-            // TODO: type of text
-            _currentContent = value.content;
-            _chapter--;
-          });
+              if (_currentSelection.value.contains(newSelection) && !_currentSelection.value.contains(' ')) {
+                return;
+              }
 
-          await widget.db.updateProgress(
-              id: widget.book.uuid, chapter: _chapter, offset: 0);
-        } else if (r.primaryVelocity! < -110) {
-          final value = await api.goNext(id: _id!);
-
-          setState(() {
-            // TODO: type of text
-            _currentContent = value.content;
-            _chapter++;
-          });
-
-          await widget.db.updateProgress(
-              id: widget.book.uuid, chapter: _chapter, offset: 0);
-        }
-      },
-      child: SelectionArea(
-        onSelectionChanged: (selection) {
-          final newSelection = selection?.plainText ?? '';
-
-          if (_currentSelection.value.contains(newSelection) &&
-              !_currentSelection.value.contains(' ')) {
-            return;
-          }
-
-          _currentSelection.value = selection?.plainText ?? '';
-        },
-        selectionControls:
-            DictionarySelectionControls(selection: _currentSelection),
-        child: Container(
-          height: double.infinity,
-          width: double.infinity,
-          color: const Color(0xfffbf0d9),
-          child: SmoothScroll(
-            initialOffset: widget.book.position.offset,
-            onScrollEnd: (offset) async {
-              await widget.db.updateProgress(
-                id: widget.book.uuid,
-                chapter: _chapter,
-                offset: offset,
-              );
-
-              setState(() {
-                _offset = offset;
-              });
+              _currentSelection.value = selection?.plainText ?? '';
             },
-            children: [
-              DefaultTextStyle(
-                style: TextStyle(
-                  fontSize: _fontSize,
-                  height: 1.5,
-                ),
-                child: Html(
-                  data: _currentContent!,
-                  style: {
-                    "p": Style.fromTextStyle(
-                      GoogleFonts.ebGaramond().copyWith(
-                        fontSize: _fontSize,
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ).merge(
-                      Style(
-                        textAlign: TextAlign.justify,
-                      ),
-                    ),
-                    "html": Style(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                      ),
-                    ),
-                  },
-                  customRender: {
-                    "svg": (context, element) {
-                      debugPrint(context.toString());
-                      debugPrint(element.toString());
+            selectionControls: DictionarySelectionControls(selection: _currentSelection),
+            child: Container(
+              height: double.infinity,
+              width: double.infinity,
+              color: const Color(0xfffbf0d9),
+              child: SmoothScroll(
+                initialOffset: widget.book.position.offset,
+                onScrollEnd: (offset, maxScrollExtent) async {
+                  await widget.db.updateProgress(
+                    id: widget.book.uuid,
+                    chapter: _chapter,
+                    offset: offset,
+                  );
 
-                      return Container(
-                          height: 30, width: 30, color: Colors.red);
-                    }
-                  },
-                  customImageRenders: {
-                    (context, element) {
-                      debugPrint(context.toString());
-                      debugPrint(element.toString());
+                  _offset = offset;
 
-                      return true;
-                    }: (context, ctx, element) => FutureBuilder(
-                          future: api.getResource(
-                            id: _id!,
-                            path: element!.attributes['src']!,
+                  // final firstChar = ((offset / maxScrollExtent) - 100).round();
+
+                  // setState(() {
+                  //   _contentSection = _currentContent!.content.substring(firstChar, firstChar + 1000);
+                  // });
+                },
+                children: [
+                  DefaultTextStyle(
+                    style: TextStyle(
+                      fontSize: _fontSize,
+                      height: 1.5,
+                    ),
+                    child: LayoutBuilder(builder: (context, layout) {
+                      return Html(
+                        data: '${_currentContent!.content}\n${_currentContent!.contentType.when(html: (extraCss) => extraCss)}',
+                        onLinkTap: (url, ctx, s, element) async {
+                          final toSend = Uri.parse(url!).path;
+
+                          await _goUrl(toSend);
+                        },
+                        style: {
+                          "p": Style.fromTextStyle(
+                            _textStyle().copyWith(
+                              fontSize: _fontSize,
+                              fontWeight: FontWeight.w300,
+                            ),
+                          ).merge(
+                            Style(
+                              // TODO: Setting
+                              margin: const EdgeInsets.only(bottom: 32),
+                              textAlign: TextAlign.justify,
+                            ),
                           ),
-                          builder: (ctx, AsyncSnapshot<Uint8List> snapshot) {
-                            if (snapshot.hasData) {
-                              return Image.memory(snapshot.data!);
+                          "h2": Style(fontSize: const FontSize(32)),
+                          "html": Style(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: (_paddingPercent / 100) * (layout.maxWidth / 2),
+                            ),
+                          ),
+                        },
+                        customRender: {
+                          "svg": (context, element) {
+                            debugPrint(context.toString());
+                            debugPrint(element.toString());
+
+                            return Container(height: 30, width: 30, color: Colors.red);
+                          }
+                        },
+                        customImageRenders: {
+                          (context, element) {
+                            debugPrint(context.toString());
+                            debugPrint(element.toString());
+
+                            return true;
+                          }: (context, ctx, element) {
+                            final path = element!.attributes['src']!;
+
+                            if (_images.containsKey(path)) {
+                              return Center(child: Image.memory(_images[path]!));
                             }
 
-                            return const SizedBox.shrink();
+                            final future = booksApi.getResource(id: _id!, path: path);
+
+                            future.then(
+                              (value) => setState(() {
+                                _images[path] = value;
+                              }),
+                            );
+
+                            return FutureBuilder(
+                              future: future,
+                              builder: (ctx, AsyncSnapshot<Uint8List> snapshot) {
+                                if (snapshot.hasData) {
+                                  return Center(child: Image.memory(snapshot.data!));
+                                }
+
+                                return const SizedBox.shrink();
+                              },
+                            );
                           },
-                        ),
-                  },
-                ),
+                        },
+                      );
+                    }),
+                  ),
+                  // Container(
+                  //   margin: const EdgeInsets.only(top: 128, bottom: 32, left: 64, right: 64),
+                  //   height: 2,
+                  //   width: double.infinity,
+                  //   color: Colors.black,
+                  // ),
+                  // TextButton(
+                  //   onPressed: () async {
+                  //     final userCode = await api.auth();
+                  //
+                  //     if (!mounted) return;
+                  //
+                  //     final fut = api.poll();
+                  //
+                  //     await showDialog<void>(
+                  //       context: context,
+                  //       barrierDismissible: false,
+                  //       builder: (BuildContext context) {
+                  //         fut.then((_) => Navigator.of(context).pop());
+                  //
+                  //         return AlertDialog(
+                  //           title: const Text('Code'),
+                  //           content: SingleChildScrollView(
+                  //             child: ListBody(
+                  //               children: [
+                  //                 SelectableText('userCode: $userCode'),
+                  //               ],
+                  //             ),
+                  //           ),
+                  //         );
+                  //       },
+                  //     );
+                  //   },
+                  //   child: const Text('sync'),
+                  // ),
+                  // TextButton(
+                  //   onPressed: () async {
+                  //     await api.sync2(path: _result!.files.single.path!);
+                  //     debugPrint('sync2 done');
+                  //   },
+                  //   child: const Text('sync 2'),
+                  // ),
+                ],
               ),
-              // Container(
-              //   margin: const EdgeInsets.only(top: 128, bottom: 32, left: 64, right: 64),
-              //   height: 2,
-              //   width: double.infinity,
-              //   color: Colors.black,
-              // ),
-              // TextButton(
-              //   onPressed: () async {
-              //     final userCode = await api.auth();
-              //
-              //     if (!mounted) return;
-              //
-              //     final fut = api.poll();
-              //
-              //     await showDialog<void>(
-              //       context: context,
-              //       barrierDismissible: false,
-              //       builder: (BuildContext context) {
-              //         fut.then((_) => Navigator.of(context).pop());
-              //
-              //         return AlertDialog(
-              //           title: const Text('Code'),
-              //           content: SingleChildScrollView(
-              //             child: ListBody(
-              //               children: [
-              //                 SelectableText('userCode: $userCode'),
-              //               ],
-              //             ),
-              //           ),
-              //         );
-              //       },
-              //     );
-              //   },
-              //   child: const Text('sync'),
-              // ),
-              // TextButton(
-              //   onPressed: () async {
-              //     await api.sync2(path: _result!.files.single.path!);
-              //     debugPrint('sync2 done');
-              //   },
-              //   child: const Text('sync 2'),
-              // ),
-            ],
+            ),
           ),
         ),
+        // TODO: Desktop
+        // Align(
+        //   alignment: Alignment.topLeft,
+        //   child: IconButton(
+        //     onPressed: () async {
+        //       await _goPrev();
+        //     },
+        //     icon: AnimatedOpacity(
+        //       duration: const Duration(milliseconds: 200),
+        //       opacity: _showIcons ? 1 : 0,
+        //       child: const Icon(Icons.arrow_back_ios),
+        //     ),
+        //   ),
+        // ),
+        // Align(
+        //   alignment: Alignment.topRight,
+        //   child: IconButton(
+        //     onPressed: () async {
+        //       await _goNext();
+        //     },
+        //     icon: AnimatedOpacity(
+        //       duration: const Duration(milliseconds: 200),
+        //       opacity: _showIcons ? 1 : 0,
+        //       child: const Icon(Icons.arrow_forward_ios),
+        //     ),
+        //   ),
+        // ),
+      ],
+    );
+  }
+
+  Future<void> _getAndSetContent() async {
+    final content = await booksApi.getContent(id: _id!);
+
+    _setContent(content);
+  }
+
+  void _setContent(ContentBlock content) {
+    setState(() {
+      _currentContent = content;
+      _chapter = content.chapter;
+    });
+  }
+
+  Future<void> _goNext() async {
+    final value = await booksApi.goNext(id: _id!);
+
+    _setContent(value);
+
+    await widget.db.updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
+  }
+
+  Future<void> _goPrev() async {
+    final value = await booksApi.goPrev(id: _id!);
+
+    _setContent(value);
+
+    await widget.db.updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
+  }
+
+  Future<void> _goUrl(String url) async {
+    final result = await booksApi.goUrl(id: _id!, url: url);
+
+    setState(() {
+      _chapter = result.chapter;
+      _currentContent = result.content;
+      _offset = 0;
+    });
+  }
+
+  List<Widget> _actions() {
+    return [
+      ValueListenableBuilder(
+        valueListenable: _isSyncing,
+        builder: (context, bool syncing, _) {
+          return IconButton(
+            onPressed: syncing
+                ? null
+                : () async {
+                    var id = await Pref.currentUser.value();
+                    if (id == null) {
+                      final response = await utilsApi.auth();
+
+                      if (!mounted) return;
+
+                      final fut = utilsApi.poll(ongoing: response);
+
+                      await showDialog<void>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          fut.then((_) => Navigator.of(context).pop());
+
+                          return AlertDialog(
+                            title: const Text('Code'),
+                            content: SingleChildScrollView(
+                              child: ListBody(
+                                children: [
+                                  Text('Navigate to ${response.verificationUri}', style: Theme.of(context).textTheme.headlineMedium),
+                                  const SizedBox(height: 16),
+                                  SelectableText('userCode: ${response.userCode}'),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+
+                      final user = await fut;
+
+                      await Pref.currentUser.set(user.id);
+                      await Pref.currentUserName.set(user.login);
+
+                      id = user.id;
+                    }
+
+                    final name = (await Pref.currentUserName.value())!;
+
+                    // TODO try catch
+                    await utilsApi.uploadFile(
+                      repo: "sync",
+                      path: widget.book.path,
+                      user: GithubUser(login: name, id: id),
+                    );
+                  },
+            icon: const Icon(Icons.sync),
+          );
+        },
       ),
+      PopupMenuButton(
+        icon: const Icon(Icons.toc),
+        position: PopupMenuPosition.under,
+        itemBuilder: (context) => <PopupMenuEntry<dynamic>>[
+          PopupMenuWidget(
+            child: StatefulBuilder(builder: (context, setInnerState) {
+              return FutureHandledBuilder(
+                future: booksApi.getToc(id: _id!),
+                builder: (ctx, List<TocEntry> value) {
+                  return Column(
+                    children: value.map((e) {
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Material(
+                          color: Colors.orangeAccent.shade100,
+                          borderRadius: BorderRadius.circular(3),
+                          type: MaterialType.card,
+                          elevation: 3,
+                          child: ListTile(
+                            onTap: () async {
+                              await _goUrl(e.url);
+
+                              if (!mounted) return;
+
+                              Navigator.of(context).pop();
+                            },
+                            title: Center(child: Text(e.label)),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              );
+            }),
+          ),
+        ],
+      ),
+      PopupMenuButton(
+        itemBuilder: (context) => <PopupMenuEntry<dynamic>>[
+          PopupMenuWidget(
+            child: StatefulBuilder(builder: (context, setInnerState) {
+              return Column(
+                children: [
+                  _settingItem(
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      title: Text('Font size: ${_fontSize.roundToDouble()}'),
+                      subtitle: Slider(
+                        value: _fontSize.roundToDouble(),
+                        max: 35,
+                        onChanged: (val) {
+                          setInnerState(() {
+                            _fontSize = val;
+                          });
+                        },
+                        onChangeEnd: (val) {
+                          setState(() {
+                            setInnerState(() {
+                              _fontSize = val;
+                            });
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  _settingItem(
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      title: Text('Padding: ${_paddingPercent.roundToDouble()}%'),
+                      subtitle: Slider(
+                        value: _paddingPercent.roundToDouble(),
+                        max: 100,
+                        onChanged: (val) {
+                          setInnerState(() {
+                            _paddingPercent = val;
+                          });
+                        },
+                        onChangeEnd: (val) {
+                          setState(() {
+                            setInnerState(() {
+                              _paddingPercent = val;
+                            });
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  _settingItem(
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      title: const Text('Font search'),
+                      onTap: () async {
+                        final result = await showSearch(context: context, delegate: FontSearch());
+
+                        setState(() {
+                          _textStyle = result!;
+                        });
+
+                        if (!mounted) return;
+
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ],
+      )
+    ];
+  }
+
+  Widget _settingItem(Widget child) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
+      child: Card(elevation: 4, color: Colors.grey.shade400, child: child),
     );
   }
 }
@@ -297,9 +513,7 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
   DictionarySelectionControls({required this.selection});
 
   @override
-  Widget buildHandle(
-      BuildContext context, TextSelectionHandleType type, double textHeight,
-      [VoidCallback? onTap]) {
+  Widget buildHandle(BuildContext context, TextSelectionHandleType type, double textHeight, [VoidCallback? onTap]) {
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
       case TargetPlatform.android:
@@ -380,19 +594,14 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
                         color: Colors.black.withOpacity(0.25),
                         spreadRadius: 0,
                         blurRadius: 4,
-                        offset:
-                            const Offset(0, 4), // changes position of shadow
+                        offset: const Offset(0, 4), // changes position of shadow
                       ),
                     ],
                   ),
                   child: FutureHandledBuilder(
-                    future: api.getDefinition(word: selection.value),
-                    loadingBuilder: (context) => const SizedBox(
-                        height: 100,
-                        child:
-                            const Center(child: CircularProgressIndicator())),
-                    errorBuilder: (context, error) =>
-                        const Text('Unable to fetch word.'),
+                    future: booksApi.getDefinition(word: selection.value),
+                    loadingBuilder: (context) => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+                    errorBuilder: (context, error) => Text('Unable to fetch word: $error'),
                     builder: (context, Definitions snapshot) {
                       final meanings = snapshot.meanings
                           .map(
@@ -463,5 +672,47 @@ class _PopupMenuWidgetState extends State<PopupMenuWidget> {
   @override
   Widget build(BuildContext context) {
     return widget.child;
+  }
+}
+
+class FontSearch extends SearchDelegate<TextStyle Function()> {
+  final fonts = GoogleFonts.asMap().values;
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return null;
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return null;
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return Container();
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    List<TextStyle Function()> listToShow;
+    if (query.isNotEmpty) {
+      listToShow = fonts.where((e) => e().fontFamily!.toLowerCase().startsWith(query.toLowerCase())).toList();
+    } else {
+      listToShow = fonts.toList();
+    }
+
+    return ListView.builder(
+      itemCount: listToShow.length,
+      itemBuilder: (_, i) {
+        var font = listToShow[i];
+        return ListTile(
+          title: Text(font().fontFamily!),
+          onTap: () {
+            close(context, font);
+          },
+        );
+      },
+    );
   }
 }

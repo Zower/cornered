@@ -5,15 +5,16 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class SmoothScroll extends StatefulWidget {
-  const SmoothScroll(
-      {super.key,
-      required this.children,
-      this.onScrollEnd,
-      required this.initialOffset});
+  const SmoothScroll({
+    super.key,
+    required this.children,
+    this.onScrollEnd,
+    required this.initialOffset,
+  });
 
   final List<Widget> children;
   final double initialOffset;
-  final void Function(double offset)? onScrollEnd;
+  final void Function(double offset, double maxScrollExtent)? onScrollEnd;
 
   @override
   State<SmoothScroll> createState() => _SmoothScrollState();
@@ -22,11 +23,13 @@ class SmoothScroll extends StatefulWidget {
 class _SmoothScrollState extends State<SmoothScroll> {
   late final ScrollController controller;
 
-  double? _desiredOffset = 0;
+  double? _desiredOffset;
 
   @override
   void initState() {
     super.initState();
+
+    _desiredOffset = widget.initialOffset;
 
     controller = ScrollController(initialScrollOffset: widget.initialOffset);
   }
@@ -60,7 +63,7 @@ class _SmoothScrollState extends State<SmoothScroll> {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification is ScrollEndNotification) {
-          widget.onScrollEnd?.call(controller.offset);
+          widget.onScrollEnd?.call(controller.offset, controller.position.maxScrollExtent);
         }
 
         return false;
@@ -74,6 +77,8 @@ class _SmoothScrollState extends State<SmoothScroll> {
       return Listener(
         onPointerSignal: _onPointerSignal,
         child: ListView(
+          // TODO DONT DO THIS
+          shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           controller: controller,
           cacheExtent: double.maxFinite,
@@ -83,6 +88,8 @@ class _SmoothScrollState extends State<SmoothScroll> {
     }
 
     return ListView(
+      // TODO DONT DO THIS
+      shrinkWrap: true,
       controller: controller,
       children: widget.children,
     );

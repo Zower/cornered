@@ -5,10 +5,10 @@ default: gen lint
 gen:
     flutter pub get
     flutter_rust_bridge_codegen \
-        --rust-input "native/src/api.rs" "native/src/test.rs" \
-        --dart-output "lib/gen/bridge_generated_1.dart" "lib/gen/bridge_generated_2.dart" \
-        --class-name Api Test \
-        --rust-output native/src/bridge_generated_1.rs native/src/bridge_generated_2.rs
+        --rust-input "native/src/books.rs" "native/src/util.rs" \
+        --dart-output "lib/gen/books_generated.dart" "lib/gen/util_generated.dart" \
+        --class-name Books Util \
+        --rust-output native/src/books_generated.rs native/src/util_generated.rs
     cp ios/Runner/bridge_generated.h macos/Runner/bridge_generated.h
 
 lint:

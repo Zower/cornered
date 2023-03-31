@@ -7,42 +7,41 @@ pub extern "C" fn wire_open_doc(port_: i64, path: *mut wire_uint_8_list, initial
 }
 
 #[no_mangle]
-pub extern "C" fn wire_go_next(port_: i64, id: *mut wire_DocumentId) {
+pub extern "C" fn wire_go_next(port_: i64, id: *mut wire_OpenDocumentId) {
     wire_go_next_impl(port_, id)
 }
 
 #[no_mangle]
-pub extern "C" fn wire_go_prev(port_: i64, id: *mut wire_DocumentId) {
+pub extern "C" fn wire_go_prev(port_: i64, id: *mut wire_OpenDocumentId) {
     wire_go_prev_impl(port_, id)
 }
 
 #[no_mangle]
-pub extern "C" fn wire_get_content(port_: i64, id: *mut wire_DocumentId) {
+pub extern "C" fn wire_go_url(
+    port_: i64,
+    id: *mut wire_OpenDocumentId,
+    url: *mut wire_uint_8_list,
+) {
+    wire_go_url_impl(port_, id, url)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_get_content(port_: i64, id: *mut wire_OpenDocumentId) {
     wire_get_content_impl(port_, id)
 }
 
 #[no_mangle]
 pub extern "C" fn wire_get_resource(
     port_: i64,
-    id: *mut wire_DocumentId,
+    id: *mut wire_OpenDocumentId,
     path: *mut wire_uint_8_list,
 ) {
     wire_get_resource_impl(port_, id, path)
 }
 
 #[no_mangle]
-pub extern "C" fn wire_auth(port_: i64) {
-    wire_auth_impl(port_)
-}
-
-#[no_mangle]
-pub extern "C" fn wire_poll(port_: i64) {
-    wire_poll_impl(port_)
-}
-
-#[no_mangle]
-pub extern "C" fn wire_sync2(port_: i64, path: *mut wire_uint_8_list) {
-    wire_sync2_impl(port_, path)
+pub extern "C" fn wire_get_toc(port_: i64, id: *mut wire_OpenDocumentId) {
+    wire_get_toc_impl(port_, id)
 }
 
 #[no_mangle]
@@ -98,8 +97,8 @@ pub extern "C" fn new_box_autoadd_database_0() -> *mut wire_Database {
 }
 
 #[no_mangle]
-pub extern "C" fn new_box_autoadd_document_id_0() -> *mut wire_DocumentId {
-    support::new_leak_box_ptr(wire_DocumentId::new_with_null_ptr())
+pub extern "C" fn new_box_autoadd_open_document_id_0() -> *mut wire_OpenDocumentId {
+    support::new_leak_box_ptr(wire_OpenDocumentId::new_with_null_ptr())
 }
 
 #[no_mangle]
@@ -127,10 +126,10 @@ impl Wire2Api<Database> for *mut wire_Database {
         Wire2Api::<Database>::wire2api(*wrap).into()
     }
 }
-impl Wire2Api<DocumentId> for *mut wire_DocumentId {
-    fn wire2api(self) -> DocumentId {
+impl Wire2Api<OpenDocumentId> for *mut wire_OpenDocumentId {
+    fn wire2api(self) -> OpenDocumentId {
         let wrap = unsafe { support::box_from_leak_ptr(self) };
-        Wire2Api::<DocumentId>::wire2api(*wrap).into()
+        Wire2Api::<OpenDocumentId>::wire2api(*wrap).into()
     }
 }
 impl Wire2Api<Database> for wire_Database {
@@ -138,9 +137,10 @@ impl Wire2Api<Database> for wire_Database {
         Database {}
     }
 }
-impl Wire2Api<DocumentId> for wire_DocumentId {
-    fn wire2api(self) -> DocumentId {
-        DocumentId(self.field0.wire2api())
+
+impl Wire2Api<OpenDocumentId> for wire_OpenDocumentId {
+    fn wire2api(self) -> OpenDocumentId {
+        OpenDocumentId(self.field0.wire2api())
     }
 }
 
@@ -161,8 +161,8 @@ pub struct wire_Database {}
 
 #[repr(C)]
 #[derive(Clone)]
-pub struct wire_DocumentId {
-    field0: u32,
+pub struct wire_OpenDocumentId {
+    field0: u64,
 }
 
 #[repr(C)]
@@ -196,7 +196,7 @@ impl Default for wire_Database {
     }
 }
 
-impl NewWithNullPtr for wire_DocumentId {
+impl NewWithNullPtr for wire_OpenDocumentId {
     fn new_with_null_ptr() -> Self {
         Self {
             field0: Default::default(),
@@ -204,7 +204,7 @@ impl NewWithNullPtr for wire_DocumentId {
     }
 }
 
-impl Default for wire_DocumentId {
+impl Default for wire_OpenDocumentId {
     fn default() -> Self {
         Self::new_with_null_ptr()
     }
