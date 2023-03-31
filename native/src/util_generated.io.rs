@@ -20,19 +20,24 @@ pub extern "C" fn wire_get_token(port_: i64, user: *mut wire_GithubUser) {
 pub extern "C" fn wire_upload_file(
     port_: i64,
     repo: *mut wire_uint_8_list,
-    path: *mut wire_uint_8_list,
+    uuid: *mut wire_uint_8_list,
     user: *mut wire_GithubUser,
 ) {
-    wire_upload_file_impl(port_, repo, path, user)
+    wire_upload_file_impl(port_, repo, uuid, user)
 }
 
 #[no_mangle]
-pub extern "C" fn wire_get_files(
+pub extern "C" fn wire_update_files(
     port_: i64,
     repo: *mut wire_uint_8_list,
     user: *mut wire_GithubUser,
 ) {
-    wire_get_files_impl(port_, repo, user)
+    wire_update_files_impl(port_, repo, user)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_font_search(port_: i64, query: *mut wire_uint_8_list) {
+    wire_font_search_impl(port_, query)
 }
 
 // Section: allocate functions

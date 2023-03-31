@@ -79,6 +79,11 @@ abstract class Books {
       {required Database that, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGetBooksMethodDatabaseConstMeta;
+
+  Future<Book> getBookMethodDatabase(
+      {required Database that, required String uuid, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetBookMethodDatabaseConstMeta;
 }
 
 class Book {
@@ -139,6 +144,12 @@ class Database {
 
   Future<List<Book>> getBooks({dynamic hint}) => bridge.getBooksMethodDatabase(
         that: this,
+      );
+
+  Future<Book> getBook({required String uuid, dynamic hint}) =>
+      bridge.getBookMethodDatabase(
+        that: this,
+        uuid: uuid,
       );
 }
 
@@ -491,6 +502,26 @@ class BooksImpl implements Books {
       const FlutterRustBridgeTaskConstMeta(
         debugName: "get_books__method__Database",
         argNames: ["that"],
+      );
+
+  Future<Book> getBookMethodDatabase(
+      {required Database that, required String uuid, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_database(that);
+    var arg1 = _platform.api2wire_String(uuid);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_get_book__method__Database(port_, arg0, arg1),
+      parseSuccessData: _wire2api_book,
+      constMeta: kGetBookMethodDatabaseConstMeta,
+      argValues: [that, uuid],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetBookMethodDatabaseConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_book__method__Database",
+        argNames: ["that", "uuid"],
       );
 
   void dispose() {
@@ -1106,6 +1137,28 @@ class BooksWire implements FlutterRustBridgeWireBase {
   late final _wire_get_books__method__Database =
       _wire_get_books__method__DatabasePtr
           .asFunction<void Function(int, ffi.Pointer<wire_Database>)>();
+
+  void wire_get_book__method__Database(
+    int port_,
+    ffi.Pointer<wire_Database> that,
+    ffi.Pointer<wire_uint_8_list> uuid,
+  ) {
+    return _wire_get_book__method__Database(
+      port_,
+      that,
+      uuid,
+    );
+  }
+
+  late final _wire_get_book__method__DatabasePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Int64, ffi.Pointer<wire_Database>,
+                  ffi.Pointer<wire_uint_8_list>)>>(
+      'wire_get_book__method__Database');
+  late final _wire_get_book__method__Database =
+      _wire_get_book__method__DatabasePtr.asFunction<
+          void Function(int, ffi.Pointer<wire_Database>,
+              ffi.Pointer<wire_uint_8_list>)>();
 
   ffi.Pointer<wire_Database> new_box_autoadd_database_0() {
     return _new_box_autoadd_database_0();

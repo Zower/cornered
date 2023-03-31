@@ -2,7 +2,7 @@
 // When adding new code to your project, note that only items used
 // here will be transformed to their Dart equivalents.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 pub static CONNECTION: OnceCell<Mutex<Connection>> = OnceCell::new();
 
@@ -18,7 +18,7 @@ use crate::{
     helpers::{open_document, ResponseOkStatus},
     types::{
         Book, ContentBlock, Definitions, Document, GoUrlResult, Meta, OpenDocumentId, Position,
-        TocEntry,
+        TocEntry, UploadedFile,
     },
 };
 
@@ -231,5 +231,47 @@ impl Database {
         })?;
 
         Ok(books.map(|x| x.unwrap()).collect())
+    }
+
+    pub fn get_book(&self, uuid: String) -> anyhow::Result<Book> {
+        let stmt = CONNECTION
+            .get()
+            .ok_or(anyhow!("Could not get connection"))?
+            .lock();
+
+        let mut stmt =
+            stmt.prepare("SELECT uuid, path, chapter, offset FROM books WHERE uuid = ?1")?;
+
+        let mut books = stmt.query_map([&uuid], |row| {
+            Ok(Book {
+                uuid: row.get(0)?,
+                path: row.get(1)?,
+                position: Position {
+                    chapter: row.get(2)?,
+                    offset: row.get(3)?,
+                },
+            })
+        })?;
+
+        Ok(books.next().ok_or(anyhow!("No such book"))??)
+    }
+
+    pub(crate) fn add_synced_book(&self, file: UploadedFile, path: &PathBuf) -> anyhow::Result<()> {
+        let stmt = CONNECTION
+            .get()
+            .ok_or(anyhow!("Could not get connection"))?
+            .lock();
+
+        stmt.execute(
+            "INSERT INTO books (uuid, path, chapter, offset) VALUES (?1, ?2, ?3, ?4)",
+            (
+                &file.uuid,
+                &path.to_str().expect("valid utf8"),
+                &file.position.chapter,
+                &file.position.offset,
+            ),
+        )?;
+
+        Ok(())
     }
 }

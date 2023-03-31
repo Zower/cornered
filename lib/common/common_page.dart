@@ -4,7 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
 
 class CommonPage extends StatelessWidget {
-  const CommonPage({Key? key, required this.title, required this.child, this.floatingActionButton, this.actions = const []}) : super(key: key);
+  const CommonPage(
+      {Key? key,
+      required this.title,
+      required this.child,
+      this.floatingActionButton,
+      this.actions = const []})
+      : super(key: key);
 
   final String title;
   final Widget child;
@@ -39,7 +45,8 @@ class CommonPage extends StatelessWidget {
             onTap: () async {
               Navigator.pushAndRemoveUntil(
                 context,
-                PageTransition(child: const Library(), type: PageTransitionType.fade),
+                PageTransition(
+                    child: const Library(), type: PageTransitionType.fade),
                 ModalRoute.withName('/'),
               );
             },

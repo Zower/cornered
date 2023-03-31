@@ -26,16 +26,20 @@ abstract class Util {
 
   Future<void> uploadFile(
       {required String repo,
-      required String path,
+      required String uuid,
       required GithubUser user,
       dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kUploadFileConstMeta;
 
-  Future<List<FileResponse>> getFiles(
+  Future<void> updateFiles(
       {required String repo, required GithubUser user, dynamic hint});
 
-  FlutterRustBridgeTaskConstMeta get kGetFilesConstMeta;
+  FlutterRustBridgeTaskConstMeta get kUpdateFilesConstMeta;
+
+  Future<List<String>> fontSearch({required String query, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kFontSearchConstMeta;
 }
 
 class DeviceFlowResponse {
@@ -49,14 +53,6 @@ class DeviceFlowResponse {
     required this.userCode,
     required this.verificationUri,
     required this.interval,
-  });
-}
-
-class FileResponse {
-  final String downloadUrl;
-
-  const FileResponse({
-    required this.downloadUrl,
   });
 }
 
@@ -130,18 +126,18 @@ class UtilImpl implements Util {
 
   Future<void> uploadFile(
       {required String repo,
-      required String path,
+      required String uuid,
       required GithubUser user,
       dynamic hint}) {
     var arg0 = _platform.api2wire_String(repo);
-    var arg1 = _platform.api2wire_String(path);
+    var arg1 = _platform.api2wire_String(uuid);
     var arg2 = _platform.api2wire_box_autoadd_github_user(user);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) =>
           _platform.inner.wire_upload_file(port_, arg0, arg1, arg2),
       parseSuccessData: _wire2api_unit,
       constMeta: kUploadFileConstMeta,
-      argValues: [repo, path, user],
+      argValues: [repo, uuid, user],
       hint: hint,
     ));
   }
@@ -149,26 +145,43 @@ class UtilImpl implements Util {
   FlutterRustBridgeTaskConstMeta get kUploadFileConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
         debugName: "upload_file",
-        argNames: ["repo", "path", "user"],
+        argNames: ["repo", "uuid", "user"],
       );
 
-  Future<List<FileResponse>> getFiles(
+  Future<void> updateFiles(
       {required String repo, required GithubUser user, dynamic hint}) {
     var arg0 = _platform.api2wire_String(repo);
     var arg1 = _platform.api2wire_box_autoadd_github_user(user);
     return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_get_files(port_, arg0, arg1),
-      parseSuccessData: _wire2api_list_file_response,
-      constMeta: kGetFilesConstMeta,
+      callFfi: (port_) => _platform.inner.wire_update_files(port_, arg0, arg1),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kUpdateFilesConstMeta,
       argValues: [repo, user],
       hint: hint,
     ));
   }
 
-  FlutterRustBridgeTaskConstMeta get kGetFilesConstMeta =>
+  FlutterRustBridgeTaskConstMeta get kUpdateFilesConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
-        debugName: "get_files",
+        debugName: "update_files",
         argNames: ["repo", "user"],
+      );
+
+  Future<List<String>> fontSearch({required String query, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(query);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_font_search(port_, arg0),
+      parseSuccessData: _wire2api_StringList,
+      constMeta: kFontSearchConstMeta,
+      argValues: [query],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kFontSearchConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "font_search",
+        argNames: ["query"],
       );
 
   void dispose() {
@@ -178,6 +191,10 @@ class UtilImpl implements Util {
 
   String _wire2api_String(dynamic raw) {
     return raw as String;
+  }
+
+  List<String> _wire2api_StringList(dynamic raw) {
+    return (raw as List<dynamic>).cast<String>();
   }
 
   DeviceFlowResponse _wire2api_device_flow_response(dynamic raw) {
@@ -192,15 +209,6 @@ class UtilImpl implements Util {
     );
   }
 
-  FileResponse _wire2api_file_response(dynamic raw) {
-    final arr = raw as List<dynamic>;
-    if (arr.length != 1)
-      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
-    return FileResponse(
-      downloadUrl: _wire2api_String(arr[0]),
-    );
-  }
-
   GithubUser _wire2api_github_user(dynamic raw) {
     final arr = raw as List<dynamic>;
     if (arr.length != 2)
@@ -209,10 +217,6 @@ class UtilImpl implements Util {
       login: _wire2api_String(arr[0]),
       id: _wire2api_u64(arr[1]),
     );
-  }
-
-  List<FileResponse> _wire2api_list_file_response(dynamic raw) {
-    return (raw as List<dynamic>).map(_wire2api_file_response).toList();
   }
 
   int _wire2api_u64(dynamic raw) {
@@ -486,13 +490,13 @@ class UtilWire implements FlutterRustBridgeWireBase {
   void wire_upload_file(
     int port_,
     ffi.Pointer<wire_uint_8_list> repo,
-    ffi.Pointer<wire_uint_8_list> path,
+    ffi.Pointer<wire_uint_8_list> uuid,
     ffi.Pointer<wire_GithubUser> user,
   ) {
     return _wire_upload_file(
       port_,
       repo,
-      path,
+      uuid,
       user,
     );
   }
@@ -508,25 +512,42 @@ class UtilWire implements FlutterRustBridgeWireBase {
       void Function(int, ffi.Pointer<wire_uint_8_list>,
           ffi.Pointer<wire_uint_8_list>, ffi.Pointer<wire_GithubUser>)>();
 
-  void wire_get_files(
+  void wire_update_files(
     int port_,
     ffi.Pointer<wire_uint_8_list> repo,
     ffi.Pointer<wire_GithubUser> user,
   ) {
-    return _wire_get_files(
+    return _wire_update_files(
       port_,
       repo,
       user,
     );
   }
 
-  late final _wire_get_filesPtr = _lookup<
+  late final _wire_update_filesPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(ffi.Int64, ffi.Pointer<wire_uint_8_list>,
-              ffi.Pointer<wire_GithubUser>)>>('wire_get_files');
-  late final _wire_get_files = _wire_get_filesPtr.asFunction<
+              ffi.Pointer<wire_GithubUser>)>>('wire_update_files');
+  late final _wire_update_files = _wire_update_filesPtr.asFunction<
       void Function(
           int, ffi.Pointer<wire_uint_8_list>, ffi.Pointer<wire_GithubUser>)>();
+
+  void wire_font_search(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> query,
+  ) {
+    return _wire_font_search(
+      port_,
+      query,
+    );
+  }
+
+  late final _wire_font_searchPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_font_search');
+  late final _wire_font_search = _wire_font_searchPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
 
   ffi.Pointer<wire_DeviceFlowResponse>
       new_box_autoadd_device_flow_response_1() {

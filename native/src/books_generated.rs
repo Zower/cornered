@@ -246,6 +246,24 @@ fn wire_get_books__method__Database_impl(
         },
     )
 }
+fn wire_get_book__method__Database_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<Database> + UnwindSafe,
+    uuid: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_book__method__Database",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            let api_uuid = uuid.wire2api();
+            move |task_callback| Database::get_book(&api_that, api_uuid)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks

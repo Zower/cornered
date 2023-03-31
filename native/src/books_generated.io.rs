@@ -89,6 +89,15 @@ pub extern "C" fn wire_get_books__method__Database(port_: i64, that: *mut wire_D
     wire_get_books__method__Database_impl(port_, that)
 }
 
+#[no_mangle]
+pub extern "C" fn wire_get_book__method__Database(
+    port_: i64,
+    that: *mut wire_Database,
+    uuid: *mut wire_uint_8_list,
+) {
+    wire_get_book__method__Database_impl(port_, that, uuid)
+}
+
 // Section: allocate functions
 
 #[no_mangle]

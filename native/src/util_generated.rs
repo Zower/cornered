@@ -20,7 +20,6 @@ use std::sync::Arc;
 // Section: imports
 
 use crate::types::DeviceFlowResponse;
-use crate::types::FileResponse;
 use crate::types::GithubUser;
 
 // Section: wire functions
@@ -64,7 +63,7 @@ fn wire_get_token_impl(port_: MessagePort, user: impl Wire2Api<GithubUser> + Unw
 fn wire_upload_file_impl(
     port_: MessagePort,
     repo: impl Wire2Api<String> + UnwindSafe,
-    path: impl Wire2Api<String> + UnwindSafe,
+    uuid: impl Wire2Api<String> + UnwindSafe,
     user: impl Wire2Api<GithubUser> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
@@ -75,27 +74,40 @@ fn wire_upload_file_impl(
         },
         move || {
             let api_repo = repo.wire2api();
-            let api_path = path.wire2api();
+            let api_uuid = uuid.wire2api();
             let api_user = user.wire2api();
-            move |task_callback| upload_file(api_repo, api_path, api_user)
+            move |task_callback| upload_file(api_repo, api_uuid, api_user)
         },
     )
 }
-fn wire_get_files_impl(
+fn wire_update_files_impl(
     port_: MessagePort,
     repo: impl Wire2Api<String> + UnwindSafe,
     user: impl Wire2Api<GithubUser> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
-            debug_name: "get_files",
+            debug_name: "update_files",
             port: Some(port_),
             mode: FfiCallMode::Normal,
         },
         move || {
             let api_repo = repo.wire2api();
             let api_user = user.wire2api();
-            move |task_callback| get_files(api_repo, api_user)
+            move |task_callback| update_files(api_repo, api_user)
+        },
+    )
+}
+fn wire_font_search_impl(port_: MessagePort, query: impl Wire2Api<String> + UnwindSafe) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "font_search",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_query = query.wire2api();
+            move |task_callback| Ok(font_search(api_query))
         },
     )
 }
@@ -147,13 +159,6 @@ impl support::IntoDart for DeviceFlowResponse {
     }
 }
 impl support::IntoDartExceptPrimitive for DeviceFlowResponse {}
-
-impl support::IntoDart for FileResponse {
-    fn into_dart(self) -> support::DartAbi {
-        vec![self.download_url.into_dart()].into_dart()
-    }
-}
-impl support::IntoDartExceptPrimitive for FileResponse {}
 
 impl support::IntoDart for GithubUser {
     fn into_dart(self) -> support::DartAbi {

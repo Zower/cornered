@@ -63,7 +63,8 @@ class _SmoothScrollState extends State<SmoothScroll> {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         if (notification is ScrollEndNotification) {
-          widget.onScrollEnd?.call(controller.offset, controller.position.maxScrollExtent);
+          widget.onScrollEnd
+              ?.call(controller.offset, controller.position.maxScrollExtent);
         }
 
         return false;

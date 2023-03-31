@@ -161,7 +161,9 @@ pub struct CodeResponse {
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct FileResponse {
+    pub name: String,
     pub download_url: String,
+    pub sha: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -179,4 +181,12 @@ pub struct TocEntry {
     pub label: String,
     pub url: String,
     pub count: usize,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UploadedFile {
+    pub uuid: String,
+    pub file_name: String,
+    pub content: Vec<u8>,
+    pub position: Position,
 }

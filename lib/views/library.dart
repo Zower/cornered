@@ -1,12 +1,9 @@
-import 'dart:io';
-
 import 'package:cornered/common/common_page.dart';
 import 'package:cornered/common/preferences.dart';
 import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/gen/util_generated.dart';
 import 'package:cornered/views/reader.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:path_provider/path_provider.dart';
@@ -107,26 +104,28 @@ class _LibraryState extends State<Library> {
 
             final name = await Pref.currentUserName.value();
 
-            final files = await utilsApi.getFiles(
+            final files = await utilsApi.updateFiles(
               repo: "sync",
               user: GithubUser(login: name!, id: id),
             );
 
-            for (final undownloaded in files) {
-              final url = undownloaded.downloadUrl;
+            await _initBooks();
 
-              final httpClient = HttpClient();
-
-              var request = await httpClient.getUrl(Uri.parse(url));
-              var response = await request.close();
-              var bytes = await consolidateHttpClientResponseBytes(response);
-              String dir = (await getApplicationDocumentsDirectory()).path;
-              // TODO
-              File file = File('$dir/book.epub');
-              await file.writeAsBytes(bytes);
-
-              await _add(file.path);
-            }
+            // for (final undownloaded in files) {
+            //   final url = undownloaded.downloadUrl;
+            //
+            //   final httpClient = HttpClient();
+            //
+            //   var request = await httpClient.getUrl(Uri.parse(url));
+            //   var response = await request.close();
+            //   var bytes = await consolidateHttpClientResponseBytes(response);
+            //   String dir = (await getApplicationDocumentsDirectory()).path;
+            //   // TODO
+            //   File file = File('$dir/book.epub');
+            //   await file.writeAsBytes(bytes);
+            //
+            //   await _add(file.path);
+            // }
           },
           icon: const Icon(Icons.download),
         ),
