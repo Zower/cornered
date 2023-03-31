@@ -160,7 +160,7 @@ pub fn update_files(repo: String, user: GithubUser) -> anyhow::Result<()> {
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
-    let app_dir = directories::ProjectDirs::from("com.example.cornered", "example", "cornered")
+    let app_dir = directories::ProjectDirs::from("com.example.cornered", "com.example", "cornered")
         .ok_or(anyhow!("Could not get app directory"))?
         .data_dir()
         .to_path_buf();
