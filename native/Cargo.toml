@@ -15,8 +15,8 @@ epub = "2.0.0"
 flutter_rust_bridge = "1.72.1"
 once_cell = "1.17.1"
 parking_lot = "0.12.1"
-rusqlite = { version = "0.28.0", features = ["bundled"] }
-serde = { version = "1.0.155", features = ["derive"] }
+rusqlite = { version = "0.29.0", features = ["bundled"] }
+serde = { version = "1.0.159", features = ["derive"] }
 thiserror = "1.0.40"
 ureq = { version = "2.6.2", features = ["json"] }
 uuid = { version = "1.3.0", features = ["v4", "fast-rng"] }
