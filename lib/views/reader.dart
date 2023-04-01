@@ -14,8 +14,7 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class Reader extends StatefulWidget {
-  const Reader({Key? key, required this.book, required this.db})
-      : super(key: key);
+  const Reader({Key? key, required this.book, required this.db}) : super(key: key);
 
   final Book book;
   final Database db;
@@ -71,8 +70,7 @@ class _ReaderState extends State<Reader> {
   }
 
   void _init() async {
-    final id = await booksApi.openDoc(
-        path: widget.book.path, initialChapter: _chapter);
+    final id = await booksApi.openDoc(path: widget.book.path, initialChapter: _chapter);
 
     setState(() {
       _id = id;
@@ -115,6 +113,7 @@ class _ReaderState extends State<Reader> {
     return Stack(
       children: [
         GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onHorizontalDragEnd: (r) async {
             if (r.primaryVelocity! > 100) {
               await _goPrev();
@@ -126,15 +125,15 @@ class _ReaderState extends State<Reader> {
             onSelectionChanged: (selection) {
               final newSelection = selection?.plainText ?? '';
 
-              if (_currentSelection.value.contains(newSelection) &&
-                  !_currentSelection.value.contains(' ')) {
+              if (_currentSelection.value.contains(newSelection) && !_currentSelection.value.contains(' ')) {
                 return;
               }
 
               _currentSelection.value = selection?.plainText ?? '';
             },
-            selectionControls:
-                DictionarySelectionControls(selection: _currentSelection),
+            selectionControls: DictionarySelectionControls(
+              selection: _currentSelection,
+            ),
             child: Container(
               height: double.infinity,
               width: double.infinity,
@@ -149,12 +148,6 @@ class _ReaderState extends State<Reader> {
                   );
 
                   _offset = offset;
-
-                  // final firstChar = ((offset / maxScrollExtent) - 100).round();
-
-                  // setState(() {
-                  //   _contentSection = _currentContent!.content.substring(firstChar, firstChar + 1000);
-                  // });
                 },
                 children: [
                   DefaultTextStyle(
@@ -164,8 +157,7 @@ class _ReaderState extends State<Reader> {
                     ),
                     child: LayoutBuilder(builder: (context, layout) {
                       return Html(
-                        data:
-                            '${_currentContent!.content}\n${_currentContent!.contentType.when(html: (extraCss) => extraCss)}',
+                        data: '${_currentContent!.content}\n${_currentContent!.contentType.when(html: (extraCss) => extraCss)}',
                         onLinkTap: (url, ctx, s, element) async {
                           await _goUrl(url!);
                         },
@@ -185,36 +177,29 @@ class _ReaderState extends State<Reader> {
                           "h2": Style(fontSize: const FontSize(32)),
                           "html": Style(
                             padding: EdgeInsets.symmetric(
-                              horizontal: (_paddingPercent / 100) *
-                                  (layout.maxWidth / 2),
+                              horizontal: (_paddingPercent / 100) * (layout.maxWidth / 2),
                             ),
                           ),
                         },
                         customRender: {
                           "svg": (context, element) {
-                            debugPrint(context.toString());
-                            debugPrint(element.toString());
+                            // debugPrint(context.toString());
+                            // debugPrint(element.toString());
 
-                            return Container(
-                                height: 30, width: 30, color: Colors.red);
+                            return Container(height: 30, width: 30, color: Colors.red);
                           }
                         },
                         customImageRenders: {
                           (context, element) {
-                            debugPrint(context.toString());
-                            debugPrint(element.toString());
-
                             return true;
                           }: (context, ctx, element) {
                             final path = element!.attributes['src']!;
 
                             if (_images.containsKey(path)) {
-                              return Center(
-                                  child: Image.memory(_images[path]!));
+                              return Center(child: Image.memory(_images[path]!));
                             }
 
-                            final future =
-                                booksApi.getResource(id: _id!, path: path);
+                            final future = booksApi.getResource(id: _id!, path: path);
 
                             future.then(
                               (value) => setState(() {
@@ -224,11 +209,9 @@ class _ReaderState extends State<Reader> {
 
                             return FutureBuilder(
                               future: future,
-                              builder:
-                                  (ctx, AsyncSnapshot<Uint8List> snapshot) {
+                              builder: (ctx, AsyncSnapshot<Uint8List> snapshot) {
                                 if (snapshot.hasData) {
-                                  return Center(
-                                      child: Image.memory(snapshot.data!));
+                                  return Center(child: Image.memory(snapshot.data!));
                                 }
 
                                 return const SizedBox.shrink();
@@ -239,48 +222,6 @@ class _ReaderState extends State<Reader> {
                       );
                     }),
                   ),
-                  // Container(
-                  //   margin: const EdgeInsets.only(top: 128, bottom: 32, left: 64, right: 64),
-                  //   height: 2,
-                  //   width: double.infinity,
-                  //   color: Colors.black,
-                  // ),
-                  // TextButton(
-                  //   onPressed: () async {
-                  //     final userCode = await api.auth();
-                  //
-                  //     if (!mounted) return;
-                  //
-                  //     final fut = api.poll();
-                  //
-                  //     await showDialog<void>(
-                  //       context: context,
-                  //       barrierDismissible: false,
-                  //       builder: (BuildContext context) {
-                  //         fut.then((_) => Navigator.of(context).pop());
-                  //
-                  //         return AlertDialog(
-                  //           title: const Text('Code'),
-                  //           content: SingleChildScrollView(
-                  //             child: ListBody(
-                  //               children: [
-                  //                 SelectableText('userCode: $userCode'),
-                  //               ],
-                  //             ),
-                  //           ),
-                  //         );
-                  //       },
-                  //     );
-                  //   },
-                  //   child: const Text('sync'),
-                  // ),
-                  // TextButton(
-                  //   onPressed: () async {
-                  //     await api.sync2(path: _result!.files.single.path!);
-                  //     debugPrint('sync2 done');
-                  //   },
-                  //   child: const Text('sync 2'),
-                  // ),
                 ],
               ),
             ),
@@ -335,8 +276,7 @@ class _ReaderState extends State<Reader> {
 
     _setContent(value);
 
-    await widget.db
-        .updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
+    await widget.db.updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
   }
 
   Future<void> _goPrev() async {
@@ -344,8 +284,7 @@ class _ReaderState extends State<Reader> {
 
     _setContent(value);
 
-    await widget.db
-        .updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
+    await widget.db.updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
   }
 
   Future<void> _goUrl(String url) async {
@@ -387,14 +326,9 @@ class _ReaderState extends State<Reader> {
                             content: SingleChildScrollView(
                               child: ListBody(
                                 children: [
-                                  Text(
-                                      'Navigate to ${response.verificationUri}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .headlineMedium),
+                                  Text('Navigate to ${response.verificationUri}', style: Theme.of(context).textTheme.headlineMedium),
                                   const SizedBox(height: 16),
-                                  SelectableText(
-                                      'userCode: ${response.userCode}'),
+                                  SelectableText('userCode: ${response.userCode}'),
                                 ],
                               ),
                             ),
@@ -469,11 +403,8 @@ class _ReaderState extends State<Reader> {
                 children: [
                   _settingItem(
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
-                      title: Center(
-                          child:
-                              Text('Font size: ${_fontSize.roundToDouble()}')),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      title: Center(child: Text('Font size: ${_fontSize.roundToDouble()}')),
                       subtitle: Slider(
                         value: _fontSize.roundToDouble(),
                         max: 35,
@@ -494,11 +425,8 @@ class _ReaderState extends State<Reader> {
                   ),
                   _settingItem(
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
-                      title: Center(
-                          child: Text(
-                              'Padding: ${_paddingPercent.roundToDouble()}%')),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      title: Center(child: Text('Padding: ${_paddingPercent.roundToDouble()}%')),
                       subtitle: Slider(
                         value: _paddingPercent.roundToDouble(),
                         max: 100,
@@ -519,12 +447,10 @@ class _ReaderState extends State<Reader> {
                   ),
                   _settingItem(
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                       title: const Center(child: Text('Fonts')),
                       onTap: () async {
-                        final result = await showSearch(
-                            context: context, delegate: FontSearch());
+                        final result = await showSearch(context: context, delegate: FontSearch());
 
                         setState(() {
                           _textStyle = GoogleFonts.asMap()[result!]!;
@@ -559,9 +485,7 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
   DictionarySelectionControls({required this.selection});
 
   @override
-  Widget buildHandle(
-      BuildContext context, TextSelectionHandleType type, double textHeight,
-      [VoidCallback? onTap]) {
+  Widget buildHandle(BuildContext context, TextSelectionHandleType type, double textHeight, [VoidCallback? onTap]) {
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
       case TargetPlatform.android:
@@ -642,18 +566,14 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
                         color: Colors.black.withOpacity(0.25),
                         spreadRadius: 0,
                         blurRadius: 4,
-                        offset:
-                            const Offset(0, 4), // changes position of shadow
+                        offset: const Offset(0, 4), // changes position of shadow
                       ),
                     ],
                   ),
                   child: FutureHandledBuilder(
                     future: booksApi.getDefinition(word: selection.value),
-                    loadingBuilder: (context) => const SizedBox(
-                        height: 100,
-                        child: Center(child: CircularProgressIndicator())),
-                    errorBuilder: (context, error) =>
-                        Text('Unable to fetch word: $error'),
+                    loadingBuilder: (context) => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+                    errorBuilder: (context, error) => Text('Unable to fetch word: $error'),
                     builder: (context, Definitions snapshot) {
                       final meanings = snapshot.meanings
                           .map(

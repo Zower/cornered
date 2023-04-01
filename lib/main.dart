@@ -15,11 +15,14 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
+      scrollBehavior: ScrollConfiguration.of(context),
       debugShowCheckedModeBanner: false,
       home: const Cornered(),
     );
   }
 }
+
+class MyCustom extends MaterialScrollBehavior {}
 
 class Cornered extends StatelessWidget {
   const Cornered({Key? key}) : super(key: key);
