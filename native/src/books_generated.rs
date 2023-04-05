@@ -22,10 +22,7 @@ use std::sync::Arc;
 use crate::types::Book;
 use crate::types::ContentBlock;
 use crate::types::ContentType;
-use crate::types::Definition;
-use crate::types::Definitions;
 use crate::types::GoUrlResult;
-use crate::types::Meaning;
 use crate::types::Meta;
 use crate::types::OpenDocumentId;
 use crate::types::Position;
@@ -33,10 +30,23 @@ use crate::types::TocEntry;
 
 // Section: wire functions
 
+fn wire_init_app_impl(port_: MessagePort, data_dir: impl Wire2Api<String> + UnwindSafe) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "init_app",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_data_dir = data_dir.wire2api();
+            move |task_callback| init_app(api_data_dir)
+        },
+    )
+}
 fn wire_open_doc_impl(
     port_: MessagePort,
     path: impl Wire2Api<String> + UnwindSafe,
-    initial_chapter: impl Wire2Api<usize> + UnwindSafe,
+    initial_chapter: impl Wire2Api<Option<usize>> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -51,105 +61,24 @@ fn wire_open_doc_impl(
         },
     )
 }
-fn wire_go_next_impl(port_: MessagePort, id: impl Wire2Api<OpenDocumentId> + UnwindSafe) {
+fn wire_get_db_impl(port_: MessagePort) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
-            debug_name: "go_next",
+            debug_name: "get_db",
             port: Some(port_),
             mode: FfiCallMode::Normal,
         },
-        move || {
-            let api_id = id.wire2api();
-            move |task_callback| go_next(api_id)
-        },
+        move || move |task_callback| Ok(get_db()),
     )
 }
-fn wire_go_prev_impl(port_: MessagePort, id: impl Wire2Api<OpenDocumentId> + UnwindSafe) {
+fn wire_clear_db_impl(port_: MessagePort) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
-            debug_name: "go_prev",
+            debug_name: "clear_db",
             port: Some(port_),
             mode: FfiCallMode::Normal,
         },
-        move || {
-            let api_id = id.wire2api();
-            move |task_callback| go_prev(api_id)
-        },
-    )
-}
-fn wire_go_url_impl(
-    port_: MessagePort,
-    id: impl Wire2Api<OpenDocumentId> + UnwindSafe,
-    url: impl Wire2Api<String> + UnwindSafe,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "go_url",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_id = id.wire2api();
-            let api_url = url.wire2api();
-            move |task_callback| go_url(api_id, api_url)
-        },
-    )
-}
-fn wire_get_content_impl(port_: MessagePort, id: impl Wire2Api<OpenDocumentId> + UnwindSafe) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "get_content",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_id = id.wire2api();
-            move |task_callback| get_content(api_id)
-        },
-    )
-}
-fn wire_get_resource_impl(
-    port_: MessagePort,
-    id: impl Wire2Api<OpenDocumentId> + UnwindSafe,
-    path: impl Wire2Api<String> + UnwindSafe,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "get_resource",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_id = id.wire2api();
-            let api_path = path.wire2api();
-            move |task_callback| get_resource(api_id, api_path)
-        },
-    )
-}
-fn wire_get_toc_impl(port_: MessagePort, id: impl Wire2Api<OpenDocumentId> + UnwindSafe) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "get_toc",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_id = id.wire2api();
-            move |task_callback| get_toc(api_id)
-        },
-    )
-}
-fn wire_init_db_impl(port_: MessagePort, path: impl Wire2Api<String> + UnwindSafe) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "init_db",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_path = path.wire2api();
-            move |task_callback| init_db(api_path)
-        },
+        move || move |task_callback| clear_db(),
     )
 }
 fn wire_get_meta_impl(port_: MessagePort, id: impl Wire2Api<String> + UnwindSafe) {
@@ -165,26 +94,103 @@ fn wire_get_meta_impl(port_: MessagePort, id: impl Wire2Api<String> + UnwindSafe
         },
     )
 }
-fn wire_clear_db_impl(port_: MessagePort) {
+fn wire_go_next__method__OpenDocument_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<OpenDocument> + UnwindSafe,
+) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
-            debug_name: "clear_db",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || move |task_callback| clear_db(),
-    )
-}
-fn wire_get_definition_impl(port_: MessagePort, word: impl Wire2Api<String> + UnwindSafe) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "get_definition",
+            debug_name: "go_next__method__OpenDocument",
             port: Some(port_),
             mode: FfiCallMode::Normal,
         },
         move || {
-            let api_word = word.wire2api();
-            move |task_callback| get_definition(api_word)
+            let api_that = that.wire2api();
+            move |task_callback| OpenDocument::go_next(&api_that)
+        },
+    )
+}
+fn wire_go_prev__method__OpenDocument_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<OpenDocument> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "go_prev__method__OpenDocument",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            move |task_callback| OpenDocument::go_prev(&api_that)
+        },
+    )
+}
+fn wire_go_url__method__OpenDocument_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<OpenDocument> + UnwindSafe,
+    url: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "go_url__method__OpenDocument",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            let api_url = url.wire2api();
+            move |task_callback| OpenDocument::go_url(&api_that, api_url)
+        },
+    )
+}
+fn wire_get_content__method__OpenDocument_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<OpenDocument> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_content__method__OpenDocument",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            move |task_callback| OpenDocument::get_content(&api_that)
+        },
+    )
+}
+fn wire_get_resource__method__OpenDocument_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<OpenDocument> + UnwindSafe,
+    path: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_resource__method__OpenDocument",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            let api_path = path.wire2api();
+            move |task_callback| OpenDocument::get_resource(&api_that, api_path)
+        },
+    )
+}
+fn wire_get_toc__method__OpenDocument_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<OpenDocument> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_toc__method__OpenDocument",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            move |task_callback| OpenDocument::get_toc(&api_that)
         },
     )
 }
@@ -351,42 +357,12 @@ impl support::IntoDart for Database {
 }
 impl support::IntoDartExceptPrimitive for Database {}
 
-impl support::IntoDart for Definition {
-    fn into_dart(self) -> support::DartAbi {
-        vec![
-            self.definition.into_dart(),
-            self.example.into_dart(),
-            self.synonyms.into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl support::IntoDartExceptPrimitive for Definition {}
-
-impl support::IntoDart for Definitions {
-    fn into_dart(self) -> support::DartAbi {
-        vec![self.word.into_dart(), self.meanings.into_dart()].into_dart()
-    }
-}
-impl support::IntoDartExceptPrimitive for Definitions {}
-
 impl support::IntoDart for GoUrlResult {
     fn into_dart(self) -> support::DartAbi {
         vec![self.content.into_dart(), self.chapter.into_dart()].into_dart()
     }
 }
 impl support::IntoDartExceptPrimitive for GoUrlResult {}
-
-impl support::IntoDart for Meaning {
-    fn into_dart(self) -> support::DartAbi {
-        vec![
-            self.part_of_speech.into_dart(),
-            self.definitions.into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl support::IntoDartExceptPrimitive for Meaning {}
 
 impl support::IntoDart for Meta {
     fn into_dart(self) -> support::DartAbi {
@@ -399,6 +375,13 @@ impl support::IntoDart for Meta {
     }
 }
 impl support::IntoDartExceptPrimitive for Meta {}
+
+impl support::IntoDart for OpenDocument {
+    fn into_dart(self) -> support::DartAbi {
+        vec![self.id.into_dart()].into_dart()
+    }
+}
+impl support::IntoDartExceptPrimitive for OpenDocument {}
 
 impl support::IntoDart for OpenDocumentId {
     fn into_dart(self) -> support::DartAbi {

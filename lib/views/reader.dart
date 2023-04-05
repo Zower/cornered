@@ -5,13 +5,13 @@ import 'dart:ui' as ui;
 import 'package:collection/collection.dart';
 import 'package:cornered/common/common_page.dart';
 import 'package:cornered/common/future_handled_builder.dart';
-import 'package:cornered/common/preferences.dart';
 import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/gen/util_generated.dart';
 import 'package:cornered/smooth_scroll.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_html/flutter_html.dart' as html;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:html/dom.dart' as dom;
 
 class Reader extends StatefulWidget {
   const Reader({Key? key, required this.book, required this.db}) : super(key: key);
@@ -24,8 +24,8 @@ class Reader extends StatefulWidget {
 }
 
 class _ReaderState extends State<Reader> {
-  OpenDocumentId? _id;
-  ContentBlock? _currentContent;
+  OpenDocument? _document;
+  dom.Document? _htmlDocument;
   int _chapter = 0;
   final ValueNotifier<String> _currentSelection = ValueNotifier('');
   final ValueNotifier<bool> _isSyncing = ValueNotifier(false);
@@ -70,10 +70,10 @@ class _ReaderState extends State<Reader> {
   }
 
   void _init() async {
-    final id = await booksApi.openDoc(path: widget.book.path, initialChapter: _chapter);
+    final document = await booksApi.openDoc(path: widget.book.path, initialChapter: _chapter);
 
     setState(() {
-      _id = id;
+      _document = document;
     });
 
     await _getAndSetContent();
@@ -104,7 +104,7 @@ class _ReaderState extends State<Reader> {
   }
 
   Widget _body() {
-    if (_currentContent == null) {
+    if (_htmlDocument == null) {
       return Container(
         color: const Color(0xfffbf0d9),
       );
@@ -150,78 +150,72 @@ class _ReaderState extends State<Reader> {
                   _offset = offset;
                 },
                 children: [
-                  DefaultTextStyle(
-                    style: TextStyle(
-                      fontSize: _fontSize,
-                      height: 1.5,
-                    ),
-                    child: LayoutBuilder(builder: (context, layout) {
-                      return Html(
-                        data: '${_currentContent!.content}\n${_currentContent!.contentType.when(html: (extraCss) => extraCss)}',
-                        onLinkTap: (url, ctx, s, element) async {
-                          await _goUrl(url!);
-                        },
-                        style: {
-                          "p": Style.fromTextStyle(
-                            _textStyle().copyWith(
-                              fontSize: _fontSize,
-                              fontWeight: FontWeight.w300,
-                            ),
-                          ).merge(
-                            Style(
-                              // TODO: Setting
-                              margin: const EdgeInsets.only(bottom: 32),
-                              textAlign: TextAlign.justify,
-                            ),
+                  LayoutBuilder(builder: (context, layout) {
+                    return html.Html.fromDom(
+                      document: _htmlDocument!,
+                      onLinkTap: (url, ctx, s, element) async {
+                        await _goUrl(url!);
+                      },
+                      style: {
+                        "p": html.Style.fromTextStyle(
+                          _textStyle().copyWith(
+                            fontSize: _fontSize,
+                            fontWeight: FontWeight.w300,
                           ),
-                          "h2": Style(fontSize: const FontSize(32)),
-                          "html": Style(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: (_paddingPercent / 100) * (layout.maxWidth / 2),
-                            ),
+                        ).merge(
+                          html.Style(
+                            // TODO: Setting
+                            margin: const EdgeInsets.only(bottom: 32),
+                            textAlign: TextAlign.justify,
                           ),
-                        },
-                        customRender: {
-                          "svg": (context, element) {
-                            // debugPrint(context.toString());
-                            // debugPrint(element.toString());
+                        ),
+                        "h2": html.Style(fontSize: const html.FontSize(32)),
+                        "html": html.Style(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: (_paddingPercent / 100) * (layout.maxWidth / 2),
+                          ),
+                        ),
+                      },
+                      customRender: {
+                        "svg": (context, element) {
+                          // debugPrint(context.toString());
+                          // debugPrint(element.toString());
 
-                            return Container(height: 30, width: 30, color: Colors.red);
+                          return Container(height: 30, width: 30, color: Colors.red);
+                        }
+                      },
+                      customImageRenders: {
+                        (context, element) {
+                          return true;
+                        }: (context, ctx, element) {
+                          final path = element!.attributes['src']!;
+
+                          if (_images.containsKey(path)) {
+                            return Center(child: Image.memory(_images[path]!));
                           }
+
+                          final future = _document!.getResource(path: path);
+
+                          future.then(
+                            (value) => setState(() {
+                              _images[path] = value;
+                            }),
+                          );
+
+                          return FutureBuilder(
+                            future: future,
+                            builder: (ctx, AsyncSnapshot<Uint8List> snapshot) {
+                              if (snapshot.hasData) {
+                                return Center(child: Image.memory(snapshot.data!));
+                              }
+
+                              return const SizedBox.shrink();
+                            },
+                          );
                         },
-                        customImageRenders: {
-                          (context, element) {
-                            return true;
-                          }: (context, ctx, element) {
-                            final path = element!.attributes['src']!;
-
-                            if (_images.containsKey(path)) {
-                              return Center(child: Image.memory(_images[path]!));
-                            }
-
-                            final future = booksApi.getResource(id: _id!, path: path);
-
-                            future.then(
-                              (value) => setState(() {
-                                _images[path] = value;
-                              }),
-                            );
-
-                            return FutureBuilder(
-                              future: future,
-                              builder: (ctx, AsyncSnapshot<Uint8List> snapshot) {
-                                if (snapshot.hasData) {
-                                  return Center(child: Image.memory(snapshot.data!));
-                                }
-
-                                return const SizedBox.shrink();
-                              },
-                            );
-                          },
-                        },
-                      );
-                    }),
-                  ),
+                      },
+                    );
+                  }),
                 ],
               ),
             ),
@@ -259,20 +253,21 @@ class _ReaderState extends State<Reader> {
   }
 
   Future<void> _getAndSetContent() async {
-    final content = await booksApi.getContent(id: _id!);
+    final content = await _document!.getContent();
 
     _setContent(content);
   }
 
-  void _setContent(ContentBlock content) {
+  void _setContent(ContentBlock content) async {
+    final doc = dom.Document.html('${content.content}\n${content.contentType.when(html: (extraCss) => extraCss)}');
     setState(() {
-      _currentContent = content;
+      _htmlDocument = doc;
       _chapter = content.chapter;
     });
   }
 
   Future<void> _goNext() async {
-    final value = await booksApi.goNext(id: _id!);
+    final value = await _document!.goNext();
 
     _setContent(value);
 
@@ -280,7 +275,7 @@ class _ReaderState extends State<Reader> {
   }
 
   Future<void> _goPrev() async {
-    final value = await booksApi.goPrev(id: _id!);
+    final value = await _document!.goPrev();
 
     _setContent(value);
 
@@ -289,74 +284,75 @@ class _ReaderState extends State<Reader> {
 
   Future<void> _goUrl(String url) async {
     // TODO try catch url parse
-    final result = await booksApi.goUrl(id: _id!, url: Uri.parse(url).path);
+    final content = await _document!.goUrl(url: Uri.parse(url).path);
 
+    final doc = dom.Document.html('${content.content.content}\n${content.content.contentType.when(html: (extraCss) => extraCss)}');
     setState(() {
-      _chapter = result.chapter;
-      _currentContent = result.content;
+      _chapter = content.chapter;
+      _htmlDocument = doc;
       _offset = 0;
     });
   }
 
   List<Widget> _actions() {
     return [
-      ValueListenableBuilder(
-        valueListenable: _isSyncing,
-        builder: (context, bool syncing, _) {
-          return IconButton(
-            onPressed: syncing
-                ? null
-                : () async {
-                    var id = await Pref.currentUser.value();
-                    if (id == null) {
-                      final response = await utilsApi.auth();
-
-                      if (!mounted) return;
-
-                      final fut = utilsApi.poll(ongoing: response);
-
-                      await showDialog<void>(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (BuildContext context) {
-                          fut.then((_) => Navigator.of(context).pop());
-
-                          return AlertDialog(
-                            title: const Text('Code'),
-                            content: SingleChildScrollView(
-                              child: ListBody(
-                                children: [
-                                  Text('Navigate to ${response.verificationUri}', style: Theme.of(context).textTheme.headlineMedium),
-                                  const SizedBox(height: 16),
-                                  SelectableText('userCode: ${response.userCode}'),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-
-                      final user = await fut;
-
-                      await Pref.currentUser.set(user.id);
-                      await Pref.currentUserName.set(user.login);
-
-                      id = user.id;
-                    }
-
-                    final name = (await Pref.currentUserName.value())!;
-
-                    // TODO try catch
-                    await utilsApi.uploadFile(
-                      repo: "sync",
-                      uuid: widget.book.uuid,
-                      user: GithubUser(login: name, id: id),
-                    );
-                  },
-            icon: const Icon(Icons.sync),
-          );
-        },
-      ),
+      // ValueListenableBuilder(
+      //   valueListenable: _isSyncing,
+      //   builder: (context, bool syncing, _) {
+      // return IconButton(
+      //   onPressed: syncing
+      //       ? null
+      //       : () async {
+      //           var id = await Pref.currentUser.value();
+      //           if (id == null) {
+      //             final response = await utilsApi.auth();
+      //
+      //             if (!mounted) return;
+      //
+      //             final fut = utilsApi.poll(ongoing: response);
+      //
+      //             await showDialog<void>(
+      //               context: context,
+      //               barrierDismissible: false,
+      //               builder: (BuildContext context) {
+      //                 fut.then((_) => Navigator.of(context).pop());
+      //
+      //                 return AlertDialog(
+      //                   title: const Text('Code'),
+      //                   content: SingleChildScrollView(
+      //                     child: ListBody(
+      //                       children: [
+      //                         Text('Navigate to ${response.verificationUri}', style: Theme.of(context).textTheme.headlineMedium),
+      //                         const SizedBox(height: 16),
+      //                         SelectableText('userCode: ${response.userCode}'),
+      //                       ],
+      //                     ),
+      //                   ),
+      //                 );
+      //               },
+      //             );
+      //
+      //             final user = await fut;
+      //
+      //             await Pref.currentUser.set(user.id);
+      //             await Pref.currentUserName.set(user.login);
+      //
+      //             id = user.id;
+      //           }
+      //
+      //           final name = (await Pref.currentUserName.value())!;
+      //
+      //           // TODO try catch
+      //           await utilsApi.uploadFile(
+      //             repo: "sync",
+      //             uuid: widget.book.uuid,
+      //             user: GithubUser(login: name, id: id),
+      //           );
+      //         },
+      //   icon: const Icon(Icons.sync),
+      //   );
+      // },
+      // ),
       PopupMenuButton(
         icon: const Icon(Icons.toc),
         position: PopupMenuPosition.under,
@@ -364,7 +360,7 @@ class _ReaderState extends State<Reader> {
           PopupMenuWidget(
             child: StatefulBuilder(builder: (context, setInnerState) {
               return FutureHandledBuilder(
-                future: booksApi.getToc(id: _id!),
+                future: _document!.getToc(),
                 builder: (ctx, List<TocEntry> value) {
                   return Column(
                     children: value.map((e) {
@@ -571,7 +567,7 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
                     ],
                   ),
                   child: FutureHandledBuilder(
-                    future: booksApi.getDefinition(word: selection.value),
+                    future: utilsApi.getDefinition(word: selection.value),
                     loadingBuilder: (context) => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
                     errorBuilder: (context, error) => Text('Unable to fetch word: $error'),
                     builder: (context, Definitions snapshot) {

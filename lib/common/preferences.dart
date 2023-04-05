@@ -1,8 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum Pref<T> {
-  currentUser<int>('currentUser'),
-  currentUserName<String>('currentUserName');
+  _dontUse('');
 
   const Pref(this._key);
 

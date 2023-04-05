@@ -12,11 +12,6 @@ pub extern "C" fn wire_poll(port_: i64, ongoing: *mut wire_DeviceFlowResponse) {
 }
 
 #[no_mangle]
-pub extern "C" fn wire_get_token(port_: i64, user: *mut wire_GithubUser) {
-    wire_get_token_impl(port_, user)
-}
-
-#[no_mangle]
 pub extern "C" fn wire_upload_file(
     port_: i64,
     repo: *mut wire_uint_8_list,
@@ -38,6 +33,11 @@ pub extern "C" fn wire_update_files(
 #[no_mangle]
 pub extern "C" fn wire_font_search(port_: i64, query: *mut wire_uint_8_list) {
     wire_font_search_impl(port_, query)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_get_definition(port_: i64, word: *mut wire_uint_8_list) {
+    wire_get_definition_impl(port_, word)
 }
 
 // Section: allocate functions

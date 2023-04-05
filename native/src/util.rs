@@ -5,12 +5,13 @@ use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use rusqlite::params;
 
 use crate::{
-    books::{Database, CONNECTION},
+    books::{Database, CONNECTION, DATA_DIR},
     fonts::FONTS,
-    types::{CodeResponse, DeviceFlowResponse, FileResponse, GithubUser, UploadedFile},
+    helpers::ResponseOkStatus,
+    types::{
+        CodeResponse, Definitions, DeviceFlowResponse, FileResponse, GithubUser, UploadedFile,
+    },
 };
-
-// static CONNECTION: OnceCell<Mutex<Connection>> = OnceCell::new();
 
 static CLIENT_ID: &str = "bc2ede3adf378ac47e57";
 static API_URL: &str = "https://api.github.com";
@@ -27,19 +28,25 @@ pub fn auth() -> anyhow::Result<DeviceFlowResponse> {
     Ok(response)
 }
 
+// TODO: Consider StreamSink and doing this from auth()
 pub fn poll(ongoing: DeviceFlowResponse) -> anyhow::Result<GithubUser> {
     let response = loop {
         std::thread::sleep(Duration::from_secs(ongoing.interval));
+
         let response = ureq::post("https://github.com/login/oauth/access_token")
             .query("client_id", CLIENT_ID)
             .query("device_code", &ongoing.device_code)
             .query("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
             .set("accept", "application/json")
-            .call()?
-            .into_json::<CodeResponse>();
+            .call();
 
-        if let Ok(response) = response {
-            break response;
+        match response {
+            Ok(response) => {
+                if let Ok(json) = response.into_json::<CodeResponse>() {
+                    break json;
+                }
+            }
+            Err(e) => return Err(anyhow!("Error: {}", e)),
         }
     };
 
@@ -51,30 +58,12 @@ pub fn poll(ongoing: DeviceFlowResponse) -> anyhow::Result<GithubUser> {
         .call()?
         .into_json::<GithubUser>()?;
 
-    CONNECTION
-        .get()
-        .ok_or(anyhow!("No connection"))?
-        .lock()
-        .execute(
-            "INSERT INTO tokens (github_id, token) VALUES (?1, ?2)",
-            params!(user.id, &response.access_token),
-        )?;
+    CONNECTION.get().unwrap().lock().execute(
+        "INSERT INTO tokens (github_id, token) VALUES (?1, ?2)",
+        params!(user.id, &response.access_token),
+    )?;
 
     Ok(user)
-}
-
-pub fn get_token(user: GithubUser) -> anyhow::Result<String> {
-    let token: String = CONNECTION
-        .get()
-        .ok_or(anyhow!("No connection"))?
-        .lock()
-        .query_row(
-            "SELECT token FROM tokens WHERE github_id = ?1",
-            params!(user.id),
-            |row| row.get(0),
-        )?;
-
-    Ok(token)
 }
 
 pub fn upload_file(repo: String, uuid: String, user: GithubUser) -> anyhow::Result<()> {
@@ -160,16 +149,14 @@ pub fn update_files(repo: String, user: GithubUser) -> anyhow::Result<()> {
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
-    let app_dir = directories::ProjectDirs::from("com.example.cornered", "com.example", "cornered")
-        .ok_or(anyhow!("Could not get app directory"))?
-        .data_dir()
-        .to_path_buf();
+    let app_dir = DATA_DIR.get().ok_or(anyhow!("No data dir"))?.join("books");
+
+    std::fs::create_dir_all(&app_dir).expect(&format!("able to create directory: {:?}", &app_dir));
 
     files.into_par_iter().for_each(|file| {
         let path = app_dir.join(&file.file_name);
-        std::fs::create_dir_all(&app_dir)
-            .expect(&format!("able to create directory: {:?}", &app_dir));
-        std::fs::write(&path, &file.content).expect("file to exist");
+        std::fs::write(&path, &file.content).expect("able to write to file");
+
         Database {}
             .add_synced_book(file, &path)
             .expect("synced book to be added");
@@ -188,6 +175,19 @@ pub fn font_search(query: String) -> Vec<String> {
         })
         .map(|font| font.to_string())
         .collect()
+}
+
+pub fn get_definition(mut word: String) -> anyhow::Result<Definitions> {
+    word.retain(|c| !r#"(),".;:'"#.contains(c));
+
+    Ok(ureq::get(&format!(
+        "https://api.dictionaryapi.dev/api/v2/entries/en/{}",
+        word.trim().to_lowercase()
+    ))
+    .call()?
+    .ok_status()?
+    .into_json::<Vec<Definitions>>()?
+    .remove(0))
 }
 
 fn get_file(

@@ -5,9 +5,13 @@
 use std::{collections::HashMap, path::PathBuf};
 
 pub static CONNECTION: OnceCell<Mutex<Connection>> = OnceCell::new();
+pub static DATA_DIR: OnceCell<PathBuf> = OnceCell::new();
 
-static DOCUMENTS: OnceCell<Mutex<HashMap<OpenDocumentId, Document>>> = OnceCell::new();
-static DOCUMENT_COUNT: OnceCell<Mutex<u64>> = OnceCell::new();
+static OPEN_DOCS: OnceCell<Mutex<HashMap<OpenDocumentId, Document>>> = OnceCell::new();
+static DOCUMENT_ID: OnceCell<Mutex<u64>> = OnceCell::new();
+
+#[cfg(debug_assertions)]
+static IS_INITIALIZED: OnceCell<()> = OnceCell::new();
 
 use anyhow::anyhow;
 use once_cell::sync::OnceCell;
@@ -15,130 +19,112 @@ use parking_lot::Mutex;
 use rusqlite::Connection;
 
 use crate::{
-    helpers::{open_document, ResponseOkStatus},
+    helpers::open_document,
     types::{
-        Book, ContentBlock, Definitions, Document, GoUrlResult, Meta, OpenDocumentId, Position,
-        TocEntry, UploadedFile,
+        Book, ContentBlock, Document, GoUrlResult, Meta, OpenDocumentId, Position, TocEntry,
+        UploadedFile,
     },
 };
 
-pub fn open_doc(path: String, initial_chapter: usize) -> anyhow::Result<OpenDocumentId> {
+pub fn init_app(data_dir: String) -> anyhow::Result<()> {
+    #[cfg(debug_assertions)]
+    fn check_init() -> anyhow::Result<()> {
+        if let Some(_) = IS_INITIALIZED.get() {
+            return Err(anyhow!("App already initialized, ignoring in debug mode"));
+        }
+
+        IS_INITIALIZED.set(()).unwrap();
+
+        Ok(())
+    }
+
+    #[cfg(debug_assertions)]
+    check_init()?;
+
+    DATA_DIR.set(data_dir.clone().into()).unwrap();
+
+    CONNECTION
+        .set(Mutex::new(Connection::open(format!(
+            "{data_dir}/cornered.db3"
+        ))?))
+        .unwrap();
+
+    OPEN_DOCS.set(Mutex::new(HashMap::new())).unwrap();
+
+    let connection = CONNECTION.get().unwrap();
+
+    std::thread::spawn(move || -> anyhow::Result<()> {
+        let connection = connection.lock();
+
+        connection
+            .prepare(
+                "CREATE TABLE IF NOT EXISTS books (
+                    uuid TEXT PRIMARY KEY,
+                    path TEXT NOT NULL,
+                    chapter INTEGER NOT NULL,
+                    offset REAL NOT NULL
+                )",
+            )?
+            .execute(())?;
+
+        connection
+            .prepare(
+                "CREATE TABLE IF NOT EXISTS tokens (
+                    github_id INTEGER PRIMARY KEY,
+                    token TEXT NOT NULL
+                )",
+            )?
+            .execute(())?;
+
+        connection
+            .prepare(
+                "CREATE TABLE IF NOT EXISTS current_token (
+                    Lock char(1) not null DEFAULT 'X',
+                    current_token INTEGER,
+                    FOREIGN KEY(current_token) REFERENCES tokens(github_id),
+                    constraint PK_T1 PRIMARY KEY (Lock),
+                    constraint CK_T1_Locked CHECK (Lock='X')
+                )
+            ",
+            )?
+            .execute(())?;
+
+        Ok(())
+    });
+
+    Ok(())
+}
+
+pub fn open_doc(path: String, initial_chapter: Option<usize>) -> anyhow::Result<OpenDocument> {
     let mut doc = open_document(path)?;
-    let mut count = DOCUMENT_COUNT.get_or_init(|| Mutex::new(0)).lock();
+    let mut count = DOCUMENT_ID.get_or_init(|| Mutex::new(0)).lock();
 
     *count += 1;
 
     let id = OpenDocumentId(*count);
 
-    let mut docs = DOCUMENTS.get_or_init(|| Mutex::new(HashMap::new())).lock();
+    let mut docs = OPEN_DOCS.get_or_init(|| Mutex::new(HashMap::new())).lock();
 
-    doc.inner.go_to(initial_chapter);
+    doc.inner.go_to(initial_chapter.unwrap_or(0));
 
     docs.insert(id, doc);
 
-    Ok(id)
+    Ok(OpenDocument { id })
 }
 
-pub fn go_next(id: OpenDocumentId) -> anyhow::Result<ContentBlock> {
-    let mut docs = DOCUMENTS.get().unwrap().lock();
-
-    let doc = docs
-        .get_mut(&id)
-        .ok_or(anyhow!("No such document: {id:?}"))?;
-
-    doc.inner.go_next().ok_or(anyhow::anyhow!("No next page"))
+pub fn get_db() -> Database {
+    Database {}
 }
 
-pub fn go_prev(id: OpenDocumentId) -> anyhow::Result<ContentBlock> {
-    let mut docs = DOCUMENTS.get().unwrap().lock();
+pub fn clear_db() -> anyhow::Result<()> {
+    let stmt = CONNECTION.get().unwrap().lock();
 
-    let doc = docs
-        .get_mut(&id)
-        .ok_or(anyhow!("No such document: {id:?}"))?;
+    stmt.execute("DELETE FROM books", [])?;
 
-    doc.inner
-        .go_prev()
-        .ok_or(anyhow::anyhow!("No previous page"))
+    Ok(())
 }
 
-pub fn go_url(id: OpenDocumentId, url: String) -> anyhow::Result<GoUrlResult> {
-    let mut docs = DOCUMENTS.get().unwrap().lock();
-
-    let doc = docs
-        .get_mut(&id)
-        .ok_or(anyhow!("No such document: {id:?}"))?;
-
-    doc.inner
-        .go_url(&url)?
-        .ok_or(anyhow::anyhow!("No such page"))
-}
-
-pub fn get_content(id: OpenDocumentId) -> anyhow::Result<ContentBlock> {
-    let mut docs = DOCUMENTS.get().unwrap().lock();
-
-    let doc = docs
-        .get_mut(&id)
-        .ok_or(anyhow!("No such document: {id:?}"))?;
-
-    doc.inner
-        .get_current()
-        .ok_or(anyhow::anyhow!("No current content"))
-}
-
-pub fn get_resource(id: OpenDocumentId, path: String) -> anyhow::Result<Vec<u8>> {
-    let mut docs = DOCUMENTS.get().unwrap().lock();
-
-    let doc = docs
-        .get_mut(&id)
-        .ok_or(anyhow!("No such document: {id:?}"))?;
-
-    doc.inner
-        .get_resource(&path)
-        .ok_or(anyhow::anyhow!("No such "))
-}
-
-pub fn get_toc(id: OpenDocumentId) -> anyhow::Result<Vec<TocEntry>> {
-    let mut docs = DOCUMENTS.get().unwrap().lock();
-
-    let doc = docs
-        .get_mut(&id)
-        .ok_or(anyhow!("No such document: {id:?}"))?;
-
-    Ok(doc.inner.get_toc())
-}
-
-pub fn init_db(path: String) -> anyhow::Result<Database> {
-    let connection = CONNECTION.get_or_try_init(
-        || -> anyhow::Result<parking_lot::lock_api::Mutex<parking_lot::RawMutex, Connection>> {
-            Ok(Mutex::new(Connection::open(format!(
-                "{path}/cornered.db3"
-            ))?))
-        },
-    )?.lock();
-
-    connection
-        .prepare(
-            "CREATE TABLE IF NOT EXISTS books (
-            uuid TEXT PRIMARY KEY,
-            path TEXT NOT NULL,
-            chapter INTEGER NOT NULL,
-            offset REAL NOT NULL
-        )",
-        )?
-        .execute(())?;
-
-    connection
-        .prepare(
-            "CREATE TABLE IF NOT EXISTS tokens (
-            github_id INTEGER PRIMARY KEY,
-            token TEXT NOT NULL
-        )",
-        )?
-        .execute(())?;
-
-    Ok(Database {})
-}
-
+// TODO
 pub fn get_meta(id: String) -> anyhow::Result<Meta> {
     let connection = CONNECTION.get().unwrap().lock();
 
@@ -153,25 +139,68 @@ pub fn get_meta(id: String) -> anyhow::Result<Meta> {
     Ok(open_document(path)?.inner.meta())
 }
 
-pub fn clear_db() -> anyhow::Result<()> {
-    let stmt = CONNECTION.get().unwrap().lock();
-
-    stmt.execute("DELETE FROM books", [])?;
-
-    Ok(())
+pub struct OpenDocument {
+    pub id: OpenDocumentId,
 }
 
-pub fn get_definition(mut word: String) -> anyhow::Result<Definitions> {
-    word.retain(|c| !r#"(),".;:'"#.contains(c));
+impl OpenDocument {
+    pub fn go_next(&self) -> anyhow::Result<ContentBlock> {
+        let mut docs = OPEN_DOCS.get().unwrap().lock();
+        let doc = self.get_doc(&mut docs)?;
 
-    Ok(ureq::get(&format!(
-        "https://api.dictionaryapi.dev/api/v2/entries/en/{}",
-        word.trim().to_lowercase()
-    ))
-    .call()?
-    .ok_status()?
-    .into_json::<Vec<Definitions>>()?
-    .remove(0))
+        doc.inner.go_next().ok_or(anyhow::anyhow!("No next page"))
+    }
+
+    pub fn go_prev(&self) -> anyhow::Result<ContentBlock> {
+        let mut docs = OPEN_DOCS.get().unwrap().lock();
+        let doc = self.get_doc(&mut docs)?;
+
+        doc.inner
+            .go_prev()
+            .ok_or(anyhow::anyhow!("No previous page"))
+    }
+
+    pub fn go_url(&self, url: String) -> anyhow::Result<GoUrlResult> {
+        let mut docs = OPEN_DOCS.get().unwrap().lock();
+        let doc = self.get_doc(&mut docs)?;
+
+        doc.inner
+            .go_url(&url)?
+            .ok_or(anyhow::anyhow!("No such page"))
+    }
+
+    pub fn get_content(&self) -> anyhow::Result<ContentBlock> {
+        let mut docs = OPEN_DOCS.get().unwrap().lock();
+        let doc = self.get_doc(&mut docs)?;
+
+        doc.inner
+            .get_current()
+            .ok_or(anyhow::anyhow!("No current content"))
+    }
+
+    pub fn get_resource(&self, path: String) -> anyhow::Result<Vec<u8>> {
+        let mut docs = OPEN_DOCS.get().unwrap().lock();
+        let doc = self.get_doc(&mut docs)?;
+
+        doc.inner
+            .get_resource(&path)
+            .ok_or(anyhow::anyhow!("No such "))
+    }
+
+    pub fn get_toc(&self) -> anyhow::Result<Vec<TocEntry>> {
+        let mut docs = OPEN_DOCS.get().unwrap().lock();
+        let doc = self.get_doc(&mut docs)?;
+
+        Ok(doc.inner.get_toc())
+    }
+
+    fn get_doc<'a>(
+        &'a self,
+        docs: &'a mut HashMap<OpenDocumentId, Document>,
+    ) -> anyhow::Result<&'a mut Document> {
+        docs.get_mut(&self.id)
+            .ok_or(anyhow!("Document has been deleted"))
+    }
 }
 
 pub struct Database {}

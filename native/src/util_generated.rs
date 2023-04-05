@@ -19,8 +19,11 @@ use std::sync::Arc;
 
 // Section: imports
 
+use crate::types::Definition;
+use crate::types::Definitions;
 use crate::types::DeviceFlowResponse;
 use crate::types::GithubUser;
+use crate::types::Meaning;
 
 // Section: wire functions
 
@@ -44,19 +47,6 @@ fn wire_poll_impl(port_: MessagePort, ongoing: impl Wire2Api<DeviceFlowResponse>
         move || {
             let api_ongoing = ongoing.wire2api();
             move |task_callback| poll(api_ongoing)
-        },
-    )
-}
-fn wire_get_token_impl(port_: MessagePort, user: impl Wire2Api<GithubUser> + UnwindSafe) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
-        WrapInfo {
-            debug_name: "get_token",
-            port: Some(port_),
-            mode: FfiCallMode::Normal,
-        },
-        move || {
-            let api_user = user.wire2api();
-            move |task_callback| get_token(api_user)
         },
     )
 }
@@ -111,6 +101,19 @@ fn wire_font_search_impl(port_: MessagePort, query: impl Wire2Api<String> + Unwi
         },
     )
 }
+fn wire_get_definition_impl(port_: MessagePort, word: impl Wire2Api<String> + UnwindSafe) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_definition",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_word = word.wire2api();
+            move |task_callback| get_definition(api_word)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks
@@ -147,6 +150,25 @@ impl Wire2Api<u8> for u8 {
 
 // Section: impl IntoDart
 
+impl support::IntoDart for Definition {
+    fn into_dart(self) -> support::DartAbi {
+        vec![
+            self.definition.into_dart(),
+            self.example.into_dart(),
+            self.synonyms.into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl support::IntoDartExceptPrimitive for Definition {}
+
+impl support::IntoDart for Definitions {
+    fn into_dart(self) -> support::DartAbi {
+        vec![self.word.into_dart(), self.meanings.into_dart()].into_dart()
+    }
+}
+impl support::IntoDartExceptPrimitive for Definitions {}
+
 impl support::IntoDart for DeviceFlowResponse {
     fn into_dart(self) -> support::DartAbi {
         vec![
@@ -166,6 +188,17 @@ impl support::IntoDart for GithubUser {
     }
 }
 impl support::IntoDartExceptPrimitive for GithubUser {}
+
+impl support::IntoDart for Meaning {
+    fn into_dart(self) -> support::DartAbi {
+        vec![
+            self.part_of_speech.into_dart(),
+            self.definitions.into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl support::IntoDartExceptPrimitive for Meaning {}
 
 // Section: executor
 

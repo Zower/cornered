@@ -20,10 +20,6 @@ abstract class Util {
 
   FlutterRustBridgeTaskConstMeta get kPollConstMeta;
 
-  Future<String> getToken({required GithubUser user, dynamic hint});
-
-  FlutterRustBridgeTaskConstMeta get kGetTokenConstMeta;
-
   Future<void> uploadFile(
       {required String repo,
       required String uuid,
@@ -40,6 +36,32 @@ abstract class Util {
   Future<List<String>> fontSearch({required String query, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kFontSearchConstMeta;
+
+  Future<Definitions> getDefinition({required String word, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetDefinitionConstMeta;
+}
+
+class Definition {
+  final String definition;
+  final String? example;
+  final List<String> synonyms;
+
+  const Definition({
+    required this.definition,
+    this.example,
+    required this.synonyms,
+  });
+}
+
+class Definitions {
+  final String word;
+  final List<Meaning> meanings;
+
+  const Definitions({
+    required this.word,
+    required this.meanings,
+  });
 }
 
 class DeviceFlowResponse {
@@ -63,6 +85,16 @@ class GithubUser {
   const GithubUser({
     required this.login,
     required this.id,
+  });
+}
+
+class Meaning {
+  final String partOfSpeech;
+  final List<Definition> definitions;
+
+  const Meaning({
+    required this.partOfSpeech,
+    required this.definitions,
   });
 }
 
@@ -105,23 +137,6 @@ class UtilImpl implements Util {
       const FlutterRustBridgeTaskConstMeta(
         debugName: "poll",
         argNames: ["ongoing"],
-      );
-
-  Future<String> getToken({required GithubUser user, dynamic hint}) {
-    var arg0 = _platform.api2wire_box_autoadd_github_user(user);
-    return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_get_token(port_, arg0),
-      parseSuccessData: _wire2api_String,
-      constMeta: kGetTokenConstMeta,
-      argValues: [user],
-      hint: hint,
-    ));
-  }
-
-  FlutterRustBridgeTaskConstMeta get kGetTokenConstMeta =>
-      const FlutterRustBridgeTaskConstMeta(
-        debugName: "get_token",
-        argNames: ["user"],
       );
 
   Future<void> uploadFile(
@@ -184,6 +199,23 @@ class UtilImpl implements Util {
         argNames: ["query"],
       );
 
+  Future<Definitions> getDefinition({required String word, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(word);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_get_definition(port_, arg0),
+      parseSuccessData: _wire2api_definitions,
+      constMeta: kGetDefinitionConstMeta,
+      argValues: [word],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetDefinitionConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_definition",
+        argNames: ["word"],
+      );
+
   void dispose() {
     _platform.dispose();
   }
@@ -195,6 +227,27 @@ class UtilImpl implements Util {
 
   List<String> _wire2api_StringList(dynamic raw) {
     return (raw as List<dynamic>).cast<String>();
+  }
+
+  Definition _wire2api_definition(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return Definition(
+      definition: _wire2api_String(arr[0]),
+      example: _wire2api_opt_String(arr[1]),
+      synonyms: _wire2api_StringList(arr[2]),
+    );
+  }
+
+  Definitions _wire2api_definitions(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Definitions(
+      word: _wire2api_String(arr[0]),
+      meanings: _wire2api_list_meaning(arr[1]),
+    );
   }
 
   DeviceFlowResponse _wire2api_device_flow_response(dynamic raw) {
@@ -217,6 +270,28 @@ class UtilImpl implements Util {
       login: _wire2api_String(arr[0]),
       id: _wire2api_u64(arr[1]),
     );
+  }
+
+  List<Definition> _wire2api_list_definition(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_definition).toList();
+  }
+
+  List<Meaning> _wire2api_list_meaning(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_meaning).toList();
+  }
+
+  Meaning _wire2api_meaning(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return Meaning(
+      partOfSpeech: _wire2api_String(arr[0]),
+      definitions: _wire2api_list_definition(arr[1]),
+    );
+  }
+
+  String? _wire2api_opt_String(dynamic raw) {
+    return raw == null ? null : _wire2api_String(raw);
   }
 
   int _wire2api_u64(dynamic raw) {
@@ -346,16 +421,16 @@ class UtilWire implements FlutterRustBridgeWireBase {
   late final _new_box_autoadd_database_0 = _new_box_autoadd_database_0Ptr
       .asFunction<ffi.Pointer<wire_Database> Function()>();
 
-  ffi.Pointer<wire_OpenDocumentId> new_box_autoadd_open_document_id_0() {
-    return _new_box_autoadd_open_document_id_0();
+  ffi.Pointer<wire_OpenDocument> new_box_autoadd_open_document_0() {
+    return _new_box_autoadd_open_document_0();
   }
 
-  late final _new_box_autoadd_open_document_id_0Ptr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<wire_OpenDocumentId> Function()>>(
-          'new_box_autoadd_open_document_id_0');
-  late final _new_box_autoadd_open_document_id_0 =
-      _new_box_autoadd_open_document_id_0Ptr
-          .asFunction<ffi.Pointer<wire_OpenDocumentId> Function()>();
+  late final _new_box_autoadd_open_document_0Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_OpenDocument> Function()>>(
+          'new_box_autoadd_open_document_0');
+  late final _new_box_autoadd_open_document_0 =
+      _new_box_autoadd_open_document_0Ptr
+          .asFunction<ffi.Pointer<wire_OpenDocument> Function()>();
 
   void free_WireSyncReturn(
     WireSyncReturn ptr,
@@ -470,23 +545,6 @@ class UtilWire implements FlutterRustBridgeWireBase {
   late final _wire_poll = _wire_pollPtr
       .asFunction<void Function(int, ffi.Pointer<wire_DeviceFlowResponse>)>();
 
-  void wire_get_token(
-    int port_,
-    ffi.Pointer<wire_GithubUser> user,
-  ) {
-    return _wire_get_token(
-      port_,
-      user,
-    );
-  }
-
-  late final _wire_get_tokenPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_GithubUser>)>>('wire_get_token');
-  late final _wire_get_token = _wire_get_tokenPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_GithubUser>)>();
-
   void wire_upload_file(
     int port_,
     ffi.Pointer<wire_uint_8_list> repo,
@@ -549,6 +607,23 @@ class UtilWire implements FlutterRustBridgeWireBase {
   late final _wire_font_search = _wire_font_searchPtr
       .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
 
+  void wire_get_definition(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> word,
+  ) {
+    return _wire_get_definition(
+      port_,
+      word,
+    );
+  }
+
+  late final _wire_get_definitionPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(ffi.Int64,
+              ffi.Pointer<wire_uint_8_list>)>>('wire_get_definition');
+  late final _wire_get_definition = _wire_get_definitionPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+
   ffi.Pointer<wire_DeviceFlowResponse>
       new_box_autoadd_device_flow_response_1() {
     return _new_box_autoadd_device_flow_response_1();
@@ -594,6 +669,10 @@ class wire_Database extends ffi.Opaque {}
 class wire_OpenDocumentId extends ffi.Struct {
   @ffi.Uint64()
   external int field0;
+}
+
+class wire_OpenDocument extends ffi.Struct {
+  external wire_OpenDocumentId id;
 }
 
 class wire_uint_8_list extends ffi.Struct {

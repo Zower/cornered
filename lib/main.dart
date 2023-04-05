@@ -1,7 +1,20 @@
+import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/views/library.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await booksApi.initApp(dataDir: (await getApplicationSupportDirectory()).path);
+  } catch (e) {
+    if (kReleaseMode) {
+      rethrow;
+    }
+  }
+
   runApp(const MyApp());
 }
 
@@ -15,7 +28,6 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
-      scrollBehavior: ScrollConfiguration.of(context),
       debugShowCheckedModeBanner: false,
       home: const Cornered(),
     );

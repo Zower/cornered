@@ -1,27 +1,21 @@
-import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/views/library.dart';
+import 'package:cornered/views/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
 
 class CommonPage extends StatelessWidget {
-  const CommonPage(
-      {Key? key,
-      required this.title,
-      required this.child,
-      this.floatingActionButton,
-      this.actions = const []})
-      : super(key: key);
+  const CommonPage({Key? key, required this.title, required this.child, this.appBar, this.floatingActionButton, this.actions = const []}) : super(key: key);
 
   final String title;
   final Widget child;
   final Widget? floatingActionButton;
   final List<Widget> actions;
-  // final AppBar? appBar;
+  final AppBar? appBar;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _appBar(),
+      appBar: appBar ?? _appBar(),
       drawer: _drawer(context),
       floatingActionButton: floatingActionButton,
       body: child,
@@ -45,17 +39,20 @@ class CommonPage extends StatelessWidget {
             onTap: () async {
               Navigator.pushAndRemoveUntil(
                 context,
-                PageTransition(
-                    child: const Library(), type: PageTransitionType.fade),
+                PageTransition(child: const Library(), type: PageTransitionType.fade),
                 ModalRoute.withName('/'),
               );
             },
           ),
           ListTile(
-            leading: const Icon(Icons.clear),
-            title: const Text('Clear database'),
+            leading: const Icon(Icons.settings),
+            title: const Text('Settings'),
             onTap: () async {
-              booksApi.clearDb();
+              Navigator.pushAndRemoveUntil(
+                context,
+                PageTransition(child: const Settings(), type: PageTransitionType.fade),
+                ModalRoute.withName('/'),
+              );
             },
           ),
         ],
