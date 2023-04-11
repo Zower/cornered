@@ -28,7 +28,6 @@ class _ReaderState extends State<Reader> {
   dom.Document? _htmlDocument;
   int _chapter = 0;
   final ValueNotifier<String> _currentSelection = ValueNotifier('');
-  final ValueNotifier<bool> _isSyncing = ValueNotifier(false);
 
   final Map<String, Uint8List> _images = {};
 
@@ -105,9 +104,7 @@ class _ReaderState extends State<Reader> {
 
   Widget _body() {
     if (_htmlDocument == null) {
-      return Container(
-        color: const Color(0xfffbf0d9),
-      );
+      return Container();
     }
 
     return Stack(
@@ -134,10 +131,7 @@ class _ReaderState extends State<Reader> {
             selectionControls: DictionarySelectionControls(
               selection: _currentSelection,
             ),
-            child: Container(
-              height: double.infinity,
-              width: double.infinity,
-              color: const Color(0xfffbf0d9),
+            child: SizedBox.expand(
               child: SmoothScroll(
                 initialOffset: widget.book.position.offset,
                 onScrollEnd: (offset, maxScrollExtent) async {
@@ -169,6 +163,7 @@ class _ReaderState extends State<Reader> {
                             textAlign: TextAlign.justify,
                           ),
                         ),
+                        // TODO
                         "h2": html.Style(fontSize: const html.FontSize(32)),
                         "html": html.Style(
                           padding: EdgeInsets.symmetric(
@@ -220,34 +215,34 @@ class _ReaderState extends State<Reader> {
               ),
             ),
           ),
+          // TODO: Desktop
+          // Align(
+          //   alignment: Alignment.topLeft,
+          //   child: IconButton(
+          //     onPressed: () async {
+          //       await _goPrev();
+          //     },
+          //     icon: AnimatedOpacity(
+          //       duration: const Duration(milliseconds: 200),
+          //       opacity: _showIcons ? 1 : 0,
+          //       child: const Icon(Icons.arrow_back_ios),
+          //     ),
+          //   ),
+          // ),
+          // Align(
+          //   alignment: Alignment.topRight,
+          //   child: IconButton(
+          //     onPressed: () async {
+          //       await _goNext();
+          //     },
+          //     icon: AnimatedOpacity(
+          //       duration: const Duration(milliseconds: 200),
+          //       opacity: _showIcons ? 1 : 0,
+          //       child: const Icon(Icons.arrow_forward_ios),
+          //     ),
+          //   ),
+          // ),
         ),
-        // TODO: Desktop
-        // Align(
-        //   alignment: Alignment.topLeft,
-        //   child: IconButton(
-        //     onPressed: () async {
-        //       await _goPrev();
-        //     },
-        //     icon: AnimatedOpacity(
-        //       duration: const Duration(milliseconds: 200),
-        //       opacity: _showIcons ? 1 : 0,
-        //       child: const Icon(Icons.arrow_back_ios),
-        //     ),
-        //   ),
-        // ),
-        // Align(
-        //   alignment: Alignment.topRight,
-        //   child: IconButton(
-        //     onPressed: () async {
-        //       await _goNext();
-        //     },
-        //     icon: AnimatedOpacity(
-        //       duration: const Duration(milliseconds: 200),
-        //       opacity: _showIcons ? 1 : 0,
-        //       child: const Icon(Icons.arrow_forward_ios),
-        //     ),
-        //   ),
-        // ),
       ],
     );
   }
@@ -367,7 +362,6 @@ class _ReaderState extends State<Reader> {
                       return Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: Material(
-                          color: Colors.orangeAccent.shade100,
                           borderRadius: BorderRadius.circular(3),
                           type: MaterialType.card,
                           elevation: 3,
@@ -470,7 +464,10 @@ class _ReaderState extends State<Reader> {
   Widget _settingItem(Widget child) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
-      child: Card(elevation: 4, color: Colors.grey.shade400, child: child),
+      child: Card(
+        elevation: 4,
+        child: child,
+      ),
     );
   }
 }
@@ -556,7 +553,7 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
                   margin: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.primaryContainer,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.25),

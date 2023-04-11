@@ -184,7 +184,7 @@ impl OpenDocument {
 
         doc.inner
             .get_resource(&path)
-            .ok_or(anyhow::anyhow!("No such "))
+            .ok_or(anyhow::anyhow!("No such resource"))
     }
 
     pub fn get_toc(&self) -> anyhow::Result<Vec<TocEntry>> {

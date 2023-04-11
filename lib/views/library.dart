@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:cornered/common/common_page.dart';
 import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/views/reader.dart';
+import 'package:cornered/views/settings.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
-import 'package:path_provider/path_provider.dart';
 
 class Library extends StatefulWidget {
   const Library({Key? key}) : super(key: key);
@@ -65,12 +65,14 @@ class _LibraryState extends State<Library> {
       appBar: _isSelecting() ? _appBarSelecting() : null,
       actions: [
         IconButton(
-            onPressed: () async {
-              final a = await getApplicationDocumentsDirectory();
-
-              debugPrint("appDir: ${a.path}");
-            },
-            icon: const Icon(Icons.data_array)),
+          onPressed: () async {
+            Navigator.push(
+              context,
+              PageTransition(child: const Settings(), type: PageTransitionType.fade),
+            );
+          },
+          icon: const Icon(Icons.settings),
+        ),
         // IconButton(
         //   onPressed: () async {
         //     // TODO fallable and not repeat

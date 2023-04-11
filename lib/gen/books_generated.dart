@@ -1233,23 +1233,6 @@ class BooksWire implements FlutterRustBridgeWireBase {
   late final _free_WireSyncReturn =
       _free_WireSyncReturnPtr.asFunction<void Function(WireSyncReturn)>();
 
-  void wire_get_token(
-    int port_,
-    ffi.Pointer<wire_GithubUser> user,
-  ) {
-    return _wire_get_token(
-      port_,
-      user,
-    );
-  }
-
-  late final _wire_get_tokenPtr = _lookup<
-      ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_GithubUser>)>>('wire_get_token');
-  late final _wire_get_token = _wire_get_tokenPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_GithubUser>)>();
-
   ffi.Pointer<wire_DeviceFlowResponse>
       new_box_autoadd_device_flow_response_1() {
     return _new_box_autoadd_device_flow_response_1();
@@ -1293,13 +1276,6 @@ class wire_OpenDocument extends ffi.Struct {
 
 class wire_Database extends ffi.Opaque {}
 
-class wire_GithubUser extends ffi.Struct {
-  external ffi.Pointer<wire_uint_8_list> login;
-
-  @ffi.Uint64()
-  external int id;
-}
-
 class wire_DeviceFlowResponse extends ffi.Struct {
   external ffi.Pointer<wire_uint_8_list> device_code;
 
@@ -1309,6 +1285,13 @@ class wire_DeviceFlowResponse extends ffi.Struct {
 
   @ffi.Uint64()
   external int interval;
+}
+
+class wire_GithubUser extends ffi.Struct {
+  external ffi.Pointer<wire_uint_8_list> login;
+
+  @ffi.Uint64()
+  external int id;
 }
 
 typedef DartPostCObjectFnType = ffi.Pointer<

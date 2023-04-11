@@ -538,6 +538,7 @@ dependencies = [
  "flutter_rust_bridge",
  "once_cell",
  "parking_lot",
+ "percent-encoding",
  "rayon",
  "rusqlite",
  "serde",

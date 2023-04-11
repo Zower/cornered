@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::anyhow;
+use percent_encoding::percent_decode_str;
 use thiserror::Error;
 use ureq::Response;
 
@@ -87,10 +88,16 @@ impl DocumentT for Epub {
     }
 
     fn go_url(&mut self, url: &str) -> anyhow::Result<Option<GoUrlResult>> {
+        let url = self.doc.root_base.clone().join(url);
+
         let chap = self
             .doc
-            .resource_uri_to_chapter(&PathBuf::from(url))
-            .ok_or(anyhow!("Could not find chapter for url {}", url))?;
+            .resource_uri_to_chapter(&PathBuf::from(
+                percent_decode_str(url.to_string_lossy().as_ref())
+                    .decode_utf8_lossy()
+                    .to_string(),
+            ))
+            .ok_or(anyhow!("Could not find chapter for url {:?}", url))?;
 
         self.doc.set_current_page(chap);
 
@@ -99,16 +106,6 @@ impl DocumentT for Epub {
             content,
             chapter: chap,
         }))
-
-        // return Ok(self.doc.get_current_str().map(|s| GoUrlResult {
-        //     content: ContentBlock::new(
-        //         s.0,
-        //         ContentType::Html {
-        //             extra_css: Some(css),
-        //         },
-        //     ),
-        //     chapter: chap,
-        // }));
     }
 }
 
