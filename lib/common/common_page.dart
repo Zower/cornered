@@ -4,17 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
 
 class CommonPage extends StatelessWidget {
-  const CommonPage(
-      {Key? key,
-      required this.title,
-      required this.child,
-      this.appBar,
-      this.floatingActionButton,
-      this.drawer,
-      this.showDrawer = true,
-      this.showAppBar = true,
-      this.actions = const []})
-      : super(key: key);
+  const CommonPage({
+    Key? key,
+    required this.title,
+    required this.child,
+    this.appBar,
+    this.floatingActionButton,
+    this.drawer,
+    this.showDrawer = true,
+    this.showAppBar = true,
+    this.actions = const [],
+  }) : super(key: key);
 
   final String title;
   final Widget child;

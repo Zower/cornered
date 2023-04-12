@@ -22,7 +22,8 @@ class FutureHandledBuilder<T> extends StatefulWidget {
 
   static Widget _defaultLoadingBuilder(context) =>
       const Center(child: CircularProgressIndicator());
-  static Widget _defaultErrorBuilder(context, e) => Text('Unhandled error $e');
+  static Widget _defaultErrorBuilder(context, e) =>
+      Text('Unexpected error: $e');
 }
 
 class _FutureHandledBuilderState<T> extends State<FutureHandledBuilder<T>> {

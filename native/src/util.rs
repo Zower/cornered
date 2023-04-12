@@ -1,20 +1,53 @@
 use std::{path::Path, time::Duration};
 
 use anyhow::anyhow;
+use r2d2_sqlite::rusqlite::params;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-use rusqlite::params;
 
 use crate::{
-    books::{Database, CONNECTION, DATA_DIR},
+    books::{Database, DATA_DIR, POOL},
     fonts::FONTS,
     helpers::ResponseOkStatus,
     types::{
-        CodeResponse, Definitions, DeviceFlowResponse, FileResponse, GithubUser, UploadedFile,
+        CodeResponse, Definitions, DeviceFlowResponse, FileResponse, GithubUser, GithubUserJson,
+        UploadedFile,
     },
 };
 
 static CLIENT_ID: &str = "bc2ede3adf378ac47e57";
 static API_URL: &str = "https://api.github.com";
+
+pub fn get_users() -> anyhow::Result<Vec<GithubUser>> {
+    let connection = POOL.get().unwrap().get().unwrap();
+
+    let Some(primary) = connection
+        .prepare("SELECT github_id FROM current_token")?
+        .query_map([], |row| Ok(row.get::<_, u64>(0)?))?
+        .next()
+        .map(|it| it.unwrap()) else {
+            return Ok(vec![]);
+        };
+
+    let mut stmt = connection.prepare("SELECT github_id, display_name, token FROM tokens")?;
+
+    let users = stmt
+        .query_map(params![], |row| {
+            Ok(GithubUserJson {
+                id: row.get(0)?,
+                display_name: row.get(1)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(users
+        .into_iter()
+        .map(|json| GithubUser::from(json.id == primary, json))
+        .collect())
+}
+
+pub fn get_primary_user() -> anyhow::Result<Option<GithubUser>> {
+    Ok(get_users()?.into_iter().find(|user| user.is_primary))
+}
 
 /// Use the response to display the user_code to the user, asking them to go to verification_uri, then call poll().
 pub fn auth() -> anyhow::Result<DeviceFlowResponse> {
@@ -56,17 +89,28 @@ pub fn poll(ongoing: DeviceFlowResponse) -> anyhow::Result<GithubUser> {
             format!("Bearer {}", response.access_token).as_str(),
         )
         .call()?
-        .into_json::<GithubUser>()?;
+        .into_json::<GithubUserJson>()?;
 
-    CONNECTION.get().unwrap().lock().execute(
-        "INSERT INTO tokens (github_id, token) VALUES (?1, ?2)",
-        params!(user.id, &response.access_token),
+    let connection = POOL.get().unwrap().get()?;
+
+    connection.execute("BEGIN TRANSACTION", [])?;
+
+    connection.execute(
+        "INSERT INTO tokens (github_id, display_name, token) VALUES (?1, ?2, ?3)",
+        params!(user.id, user.display_name, &response.access_token),
     )?;
 
-    Ok(user)
+    connection.execute(
+        "INSERT INTO current_token (github_id) VALUES (?1)",
+        params!(user.id),
+    )?;
+
+    connection.execute("COMMIT", [])?;
+
+    Ok(GithubUser::from(true, user))
 }
 
-pub fn upload_file(repo: String, uuid: String, user: GithubUser) -> anyhow::Result<()> {
+pub fn upload_file(repo: String, uuid: String, user: GithubUserJson) -> anyhow::Result<()> {
     let book = Database {}.get_book(uuid.clone())?;
 
     let file_name = Path::new(&book.path)
@@ -85,17 +129,17 @@ pub fn upload_file(repo: String, uuid: String, user: GithubUser) -> anyhow::Resu
     #[allow(deprecated)]
     let file = base64::encode(bincode::serialize(&upload)?);
 
-    let token: String = CONNECTION
+    let token: String = POOL
         .get()
         .ok_or(anyhow!("No connection"))?
-        .lock()
+        .get()?
         .query_row(
             "SELECT token FROM tokens WHERE github_id = ?1",
             params!(user.id),
             |row| row.get(0),
         )?;
 
-    let old = get_file(&user.login, &repo, &book.uuid, &token)?;
+    let old = get_file(&user.display_name, &repo, &book.uuid, &token)?;
 
     let json = ureq::json!({
         "message": format!("Synchronize {:?}", &file_name),
@@ -105,7 +149,7 @@ pub fn upload_file(repo: String, uuid: String, user: GithubUser) -> anyhow::Resu
 
     ureq::put(&format!(
         "https://api.github.com/repos/{}/{}/contents/{}.crn",
-        user.login, repo, book.uuid
+        user.display_name, repo, book.uuid
     ))
     .set("Authorization", format!("Bearer {}", token).as_str())
     .set("accept", "application/vnd.github+json")
@@ -114,11 +158,11 @@ pub fn upload_file(repo: String, uuid: String, user: GithubUser) -> anyhow::Resu
     Ok(())
 }
 
-pub fn update_files(repo: String, user: GithubUser) -> anyhow::Result<()> {
-    let token: String = CONNECTION
+pub fn update_files(repo: String, user: GithubUserJson) -> anyhow::Result<()> {
+    let token: String = POOL
         .get()
         .ok_or(anyhow!("No connection"))?
-        .lock()
+        .get()?
         .query_row(
             "SELECT token FROM tokens WHERE github_id = ?1",
             params!(user.id),
@@ -127,7 +171,7 @@ pub fn update_files(repo: String, user: GithubUser) -> anyhow::Result<()> {
 
     let responses = ureq::get(&format!(
         "https://api.github.com/repos/{}/{}/contents",
-        user.login, repo
+        user.display_name, repo
     ))
     .set("Authorization", &format!("Bearer {}", token))
     .set("accept", "application/vnd.github+json")

@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:cornered/common/common_page.dart';
+import 'package:cornered/common/future_handled_builder.dart';
 import 'package:cornered/gen/ffi.dart';
+import 'package:cornered/utils.dart';
 import 'package:cornered/views/reader.dart';
 import 'package:cornered/views/settings.dart';
 import 'package:file_picker/file_picker.dart';
@@ -33,10 +35,12 @@ class _LibraryState extends State<Library> {
   Future<void> _initBooks() async {
     db = await booksApi.getDb();
 
-    final books = await db!.getBooks();
+    runCatching(() async {
+      final books = await db!.getBooks();
 
-    setState(() {
-      _books = books;
+      setState(() {
+        _books = books;
+      });
     });
   }
 
@@ -68,7 +72,8 @@ class _LibraryState extends State<Library> {
           onPressed: () async {
             Navigator.push(
               context,
-              PageTransition(child: const Settings(), type: PageTransitionType.fade),
+              PageTransition(
+                  child: const Settings(), type: PageTransitionType.fade),
             );
           },
           icon: const Icon(Icons.settings),
@@ -148,34 +153,21 @@ class _LibraryState extends State<Library> {
     );
   }
 
-  Future<Meta> getMeta(Book book) async {
-    try {
-      final meta = await booksApi.getMeta(id: book.uuid);
-
-      return meta;
-    } catch (e) {
-      debugPrint(e.toString());
-      rethrow;
-    }
-  }
-
   Widget _bookItem(Book book) {
-    return FutureBuilder(
-      future: getMeta(book),
-      builder: (context, AsyncSnapshot<Meta> snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
+    return FutureHandledBuilder(
+      future: booksApi.getMeta(id: book.uuid),
+      builder: (context, Meta snapshot) {
         return Padding(
           padding: const EdgeInsets.all(8.0),
           child: Card(
             child: ListTile(
               selected: _selected.contains(book),
-              selectedTileColor: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-              title: Text(snapshot.data!.title ?? ''),
-              subtitle: snapshot.data?.author != null ? Text(snapshot.data!.author!) : null,
+              selectedTileColor:
+                  Theme.of(context).colorScheme.secondary.withOpacity(0.2),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+              title: Text(snapshot.title ?? ''),
+              subtitle: snapshot.author != null ? Text(snapshot.author!) : null,
               onLongPress: () {
                 _selectTapBook(book);
               },
@@ -184,8 +176,9 @@ class _LibraryState extends State<Library> {
                       backgroundColor: Colors.white,
                       child: Icon(Icons.check),
                     )
-                  : snapshot.data!.cover != null
-                      ? _uuidToImage[book.uuid] ?? _setCover(snapshot.data!.cover!, book.uuid)
+                  : snapshot.cover != null
+                      ? _uuidToImage[book.uuid] ??
+                          _setCover(snapshot.cover!, book.uuid)
                       : null,
               onTap: () async {
                 if (_isSelecting()) {
@@ -207,7 +200,8 @@ class _LibraryState extends State<Library> {
 
                 if (!mounted) return;
 
-                final index = _books!.indexWhere((element) => element.uuid == result!.uuid);
+                final index = _books!
+                    .indexWhere((element) => element.uuid == result!.uuid);
 
                 setState(() {
                   _books?[index] = result!;
@@ -250,11 +244,14 @@ class _LibraryState extends State<Library> {
       actions: [
         IconButton(
           onPressed: () async {
-            // await db!.deleteBooks(_selected);
+            runCatching(() async {
+              await db!
+                  .deleteBooks(uuids: _selected.map((e) => e.uuid).toList());
 
-            setState(() {
-              _books!.removeWhere((element) => _selected.contains(element));
-              _selected = [];
+              setState(() {
+                _books!.removeWhere((element) => _selected.contains(element));
+                _selected = [];
+              });
             });
           },
           icon: const Icon(Icons.delete),

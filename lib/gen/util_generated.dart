@@ -11,6 +11,14 @@ import 'package:uuid/uuid.dart';
 import 'dart:ffi' as ffi;
 
 abstract class Util {
+  Future<List<GithubUser>> getUsers({dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetUsersConstMeta;
+
+  Future<GithubUser?> getPrimaryUser({dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGetPrimaryUserConstMeta;
+
   /// Use the response to display the user_code to the user, asking them to go to verification_uri, then call poll().
   Future<DeviceFlowResponse> auth({dynamic hint});
 
@@ -23,13 +31,13 @@ abstract class Util {
   Future<void> uploadFile(
       {required String repo,
       required String uuid,
-      required GithubUser user,
+      required GithubUserJson user,
       dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kUploadFileConstMeta;
 
   Future<void> updateFiles(
-      {required String repo, required GithubUser user, dynamic hint});
+      {required String repo, required GithubUserJson user, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kUpdateFilesConstMeta;
 
@@ -79,11 +87,23 @@ class DeviceFlowResponse {
 }
 
 class GithubUser {
-  final String login;
+  final String displayName;
   final int id;
+  final bool isPrimary;
 
   const GithubUser({
-    required this.login,
+    required this.displayName,
+    required this.id,
+    required this.isPrimary,
+  });
+}
+
+class GithubUserJson {
+  final String displayName;
+  final int id;
+
+  const GithubUserJson({
+    required this.displayName,
     required this.id,
   });
 }
@@ -106,6 +126,38 @@ class UtilImpl implements Util {
   factory UtilImpl.wasm(FutureOr<WasmModule> module) =>
       UtilImpl(module as ExternalLibrary);
   UtilImpl.raw(this._platform);
+  Future<List<GithubUser>> getUsers({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_get_users(port_),
+      parseSuccessData: _wire2api_list_github_user,
+      constMeta: kGetUsersConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetUsersConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_users",
+        argNames: [],
+      );
+
+  Future<GithubUser?> getPrimaryUser({dynamic hint}) {
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_get_primary_user(port_),
+      parseSuccessData: _wire2api_opt_box_autoadd_github_user,
+      constMeta: kGetPrimaryUserConstMeta,
+      argValues: [],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGetPrimaryUserConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "get_primary_user",
+        argNames: [],
+      );
+
   Future<DeviceFlowResponse> auth({dynamic hint}) {
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_auth(port_),
@@ -142,11 +194,11 @@ class UtilImpl implements Util {
   Future<void> uploadFile(
       {required String repo,
       required String uuid,
-      required GithubUser user,
+      required GithubUserJson user,
       dynamic hint}) {
     var arg0 = _platform.api2wire_String(repo);
     var arg1 = _platform.api2wire_String(uuid);
-    var arg2 = _platform.api2wire_box_autoadd_github_user(user);
+    var arg2 = _platform.api2wire_box_autoadd_github_user_json(user);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) =>
           _platform.inner.wire_upload_file(port_, arg0, arg1, arg2),
@@ -164,9 +216,9 @@ class UtilImpl implements Util {
       );
 
   Future<void> updateFiles(
-      {required String repo, required GithubUser user, dynamic hint}) {
+      {required String repo, required GithubUserJson user, dynamic hint}) {
     var arg0 = _platform.api2wire_String(repo);
-    var arg1 = _platform.api2wire_box_autoadd_github_user(user);
+    var arg1 = _platform.api2wire_box_autoadd_github_user_json(user);
     return _platform.executeNormal(FlutterRustBridgeTask(
       callFfi: (port_) => _platform.inner.wire_update_files(port_, arg0, arg1),
       parseSuccessData: _wire2api_unit,
@@ -229,6 +281,14 @@ class UtilImpl implements Util {
     return (raw as List<dynamic>).cast<String>();
   }
 
+  bool _wire2api_bool(dynamic raw) {
+    return raw as bool;
+  }
+
+  GithubUser _wire2api_box_autoadd_github_user(dynamic raw) {
+    return _wire2api_github_user(raw);
+  }
+
   Definition _wire2api_definition(dynamic raw) {
     final arr = raw as List<dynamic>;
     if (arr.length != 3)
@@ -264,16 +324,21 @@ class UtilImpl implements Util {
 
   GithubUser _wire2api_github_user(dynamic raw) {
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return GithubUser(
-      login: _wire2api_String(arr[0]),
+      displayName: _wire2api_String(arr[0]),
       id: _wire2api_u64(arr[1]),
+      isPrimary: _wire2api_bool(arr[2]),
     );
   }
 
   List<Definition> _wire2api_list_definition(dynamic raw) {
     return (raw as List<dynamic>).map(_wire2api_definition).toList();
+  }
+
+  List<GithubUser> _wire2api_list_github_user(dynamic raw) {
+    return (raw as List<dynamic>).map(_wire2api_github_user).toList();
   }
 
   List<Meaning> _wire2api_list_meaning(dynamic raw) {
@@ -292,6 +357,10 @@ class UtilImpl implements Util {
 
   String? _wire2api_opt_String(dynamic raw) {
     return raw == null ? null : _wire2api_String(raw);
+  }
+
+  GithubUser? _wire2api_opt_box_autoadd_github_user(dynamic raw) {
+    return raw == null ? null : _wire2api_box_autoadd_github_user(raw);
   }
 
   int _wire2api_u64(dynamic raw) {
@@ -339,10 +408,10 @@ class UtilPlatform extends FlutterRustBridgeBase<UtilWire> {
   }
 
   @protected
-  ffi.Pointer<wire_GithubUser> api2wire_box_autoadd_github_user(
-      GithubUser raw) {
-    final ptr = inner.new_box_autoadd_github_user_1();
-    _api_fill_to_wire_github_user(raw, ptr.ref);
+  ffi.Pointer<wire_GithubUserJson> api2wire_box_autoadd_github_user_json(
+      GithubUserJson raw) {
+    final ptr = inner.new_box_autoadd_github_user_json_1();
+    _api_fill_to_wire_github_user_json(raw, ptr.ref);
     return ptr;
   }
 
@@ -366,9 +435,9 @@ class UtilPlatform extends FlutterRustBridgeBase<UtilWire> {
     _api_fill_to_wire_device_flow_response(apiObj, wireObj.ref);
   }
 
-  void _api_fill_to_wire_box_autoadd_github_user(
-      GithubUser apiObj, ffi.Pointer<wire_GithubUser> wireObj) {
-    _api_fill_to_wire_github_user(apiObj, wireObj.ref);
+  void _api_fill_to_wire_box_autoadd_github_user_json(
+      GithubUserJson apiObj, ffi.Pointer<wire_GithubUserJson> wireObj) {
+    _api_fill_to_wire_github_user_json(apiObj, wireObj.ref);
   }
 
   void _api_fill_to_wire_device_flow_response(
@@ -379,9 +448,9 @@ class UtilPlatform extends FlutterRustBridgeBase<UtilWire> {
     wireObj.interval = api2wire_u64(apiObj.interval);
   }
 
-  void _api_fill_to_wire_github_user(
-      GithubUser apiObj, wire_GithubUser wireObj) {
-    wireObj.login = api2wire_String(apiObj.login);
+  void _api_fill_to_wire_github_user_json(
+      GithubUserJson apiObj, wire_GithubUserJson wireObj) {
+    wireObj.display_name = api2wire_String(apiObj.displayName);
     wireObj.id = api2wire_u64(apiObj.id);
   }
 }
@@ -516,6 +585,34 @@ class UtilWire implements FlutterRustBridgeWireBase {
   late final _init_frb_dart_api_dl = _init_frb_dart_api_dlPtr
       .asFunction<int Function(ffi.Pointer<ffi.Void>)>();
 
+  void wire_get_users(
+    int port_,
+  ) {
+    return _wire_get_users(
+      port_,
+    );
+  }
+
+  late final _wire_get_usersPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+          'wire_get_users');
+  late final _wire_get_users =
+      _wire_get_usersPtr.asFunction<void Function(int)>();
+
+  void wire_get_primary_user(
+    int port_,
+  ) {
+    return _wire_get_primary_user(
+      port_,
+    );
+  }
+
+  late final _wire_get_primary_userPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Int64)>>(
+          'wire_get_primary_user');
+  late final _wire_get_primary_user =
+      _wire_get_primary_userPtr.asFunction<void Function(int)>();
+
   void wire_auth(
     int port_,
   ) {
@@ -549,7 +646,7 @@ class UtilWire implements FlutterRustBridgeWireBase {
     int port_,
     ffi.Pointer<wire_uint_8_list> repo,
     ffi.Pointer<wire_uint_8_list> uuid,
-    ffi.Pointer<wire_GithubUser> user,
+    ffi.Pointer<wire_GithubUserJson> user,
   ) {
     return _wire_upload_file(
       port_,
@@ -565,15 +662,15 @@ class UtilWire implements FlutterRustBridgeWireBase {
               ffi.Int64,
               ffi.Pointer<wire_uint_8_list>,
               ffi.Pointer<wire_uint_8_list>,
-              ffi.Pointer<wire_GithubUser>)>>('wire_upload_file');
+              ffi.Pointer<wire_GithubUserJson>)>>('wire_upload_file');
   late final _wire_upload_file = _wire_upload_filePtr.asFunction<
       void Function(int, ffi.Pointer<wire_uint_8_list>,
-          ffi.Pointer<wire_uint_8_list>, ffi.Pointer<wire_GithubUser>)>();
+          ffi.Pointer<wire_uint_8_list>, ffi.Pointer<wire_GithubUserJson>)>();
 
   void wire_update_files(
     int port_,
     ffi.Pointer<wire_uint_8_list> repo,
-    ffi.Pointer<wire_GithubUser> user,
+    ffi.Pointer<wire_GithubUserJson> user,
   ) {
     return _wire_update_files(
       port_,
@@ -585,10 +682,10 @@ class UtilWire implements FlutterRustBridgeWireBase {
   late final _wire_update_filesPtr = _lookup<
       ffi.NativeFunction<
           ffi.Void Function(ffi.Int64, ffi.Pointer<wire_uint_8_list>,
-              ffi.Pointer<wire_GithubUser>)>>('wire_update_files');
+              ffi.Pointer<wire_GithubUserJson>)>>('wire_update_files');
   late final _wire_update_files = _wire_update_filesPtr.asFunction<
-      void Function(
-          int, ffi.Pointer<wire_uint_8_list>, ffi.Pointer<wire_GithubUser>)>();
+      void Function(int, ffi.Pointer<wire_uint_8_list>,
+          ffi.Pointer<wire_GithubUserJson>)>();
 
   void wire_font_search(
     int port_,
@@ -636,15 +733,16 @@ class UtilWire implements FlutterRustBridgeWireBase {
       _new_box_autoadd_device_flow_response_1Ptr
           .asFunction<ffi.Pointer<wire_DeviceFlowResponse> Function()>();
 
-  ffi.Pointer<wire_GithubUser> new_box_autoadd_github_user_1() {
-    return _new_box_autoadd_github_user_1();
+  ffi.Pointer<wire_GithubUserJson> new_box_autoadd_github_user_json_1() {
+    return _new_box_autoadd_github_user_json_1();
   }
 
-  late final _new_box_autoadd_github_user_1Ptr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<wire_GithubUser> Function()>>(
-          'new_box_autoadd_github_user_1');
-  late final _new_box_autoadd_github_user_1 = _new_box_autoadd_github_user_1Ptr
-      .asFunction<ffi.Pointer<wire_GithubUser> Function()>();
+  late final _new_box_autoadd_github_user_json_1Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_GithubUserJson> Function()>>(
+          'new_box_autoadd_github_user_json_1');
+  late final _new_box_autoadd_github_user_json_1 =
+      _new_box_autoadd_github_user_json_1Ptr
+          .asFunction<ffi.Pointer<wire_GithubUserJson> Function()>();
 
   ffi.Pointer<wire_uint_8_list> new_uint_8_list_1(
     int len,
@@ -693,8 +791,8 @@ class wire_DeviceFlowResponse extends ffi.Struct {
   external int interval;
 }
 
-class wire_GithubUser extends ffi.Struct {
-  external ffi.Pointer<wire_uint_8_list> login;
+class wire_GithubUserJson extends ffi.Struct {
+  external ffi.Pointer<wire_uint_8_list> display_name;
 
   @ffi.Uint64()
   external int id;

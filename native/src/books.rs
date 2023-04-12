@@ -4,7 +4,7 @@
 
 use std::{collections::HashMap, path::PathBuf};
 
-pub static CONNECTION: OnceCell<Mutex<Connection>> = OnceCell::new();
+pub static POOL: OnceCell<Pool<SqliteConnectionManager>> = OnceCell::new();
 pub static DATA_DIR: OnceCell<PathBuf> = OnceCell::new();
 
 static OPEN_DOCS: OnceCell<Mutex<HashMap<OpenDocumentId, Document>>> = OnceCell::new();
@@ -16,7 +16,8 @@ static IS_INITIALIZED: OnceCell<()> = OnceCell::new();
 use anyhow::anyhow;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
-use rusqlite::Connection;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 
 use crate::{
     helpers::open_document,
@@ -41,20 +42,21 @@ pub fn init_app(data_dir: String) -> anyhow::Result<()> {
     #[cfg(debug_assertions)]
     check_init()?;
 
+    let manager =
+        SqliteConnectionManager::file(format!("{data_dir}/cornered.db3", data_dir = data_dir));
+
+    let pool = r2d2::Pool::new(manager)?;
+
+    let connection = pool.clone();
+
     DATA_DIR.set(data_dir.clone().into()).unwrap();
 
-    CONNECTION
-        .set(Mutex::new(Connection::open(format!(
-            "{data_dir}/cornered.db3"
-        ))?))
-        .unwrap();
+    POOL.set(pool).unwrap();
 
     OPEN_DOCS.set(Mutex::new(HashMap::new())).unwrap();
 
-    let connection = CONNECTION.get().unwrap();
-
     std::thread::spawn(move || -> anyhow::Result<()> {
-        let connection = connection.lock();
+        let connection = connection.get()?;
 
         connection
             .prepare(
@@ -71,6 +73,7 @@ pub fn init_app(data_dir: String) -> anyhow::Result<()> {
             .prepare(
                 "CREATE TABLE IF NOT EXISTS tokens (
                     github_id INTEGER PRIMARY KEY,
+                    display_name TEXT NOT NULL,
                     token TEXT NOT NULL
                 )",
             )?
@@ -80,8 +83,8 @@ pub fn init_app(data_dir: String) -> anyhow::Result<()> {
             .prepare(
                 "CREATE TABLE IF NOT EXISTS current_token (
                     Lock char(1) not null DEFAULT 'X',
-                    current_token INTEGER,
-                    FOREIGN KEY(current_token) REFERENCES tokens(github_id),
+                    github_id INTEGER,
+                    FOREIGN KEY(github_id) REFERENCES tokens(github_id),
                     constraint PK_T1 PRIMARY KEY (Lock),
                     constraint CK_T1_Locked CHECK (Lock='X')
                 )
@@ -117,7 +120,7 @@ pub fn get_db() -> Database {
 }
 
 pub fn clear_db() -> anyhow::Result<()> {
-    let stmt = CONNECTION.get().unwrap().lock();
+    let stmt = POOL.get().unwrap().get()?;
 
     stmt.execute("DELETE FROM books", [])?;
 
@@ -126,7 +129,7 @@ pub fn clear_db() -> anyhow::Result<()> {
 
 // TODO
 pub fn get_meta(id: String) -> anyhow::Result<Meta> {
-    let connection = CONNECTION.get().unwrap().lock();
+    let connection = POOL.get().unwrap().get()?;
 
     let mut stmt = connection.prepare("SELECT path FROM books WHERE uuid = ?1")?;
 
@@ -210,10 +213,10 @@ impl Database {
         let id = uuid::Uuid::new_v4().to_string();
 
         {
-            let stmt = CONNECTION
+            let stmt = POOL
                 .get()
                 .ok_or(anyhow!("Could not get connection"))?
-                .lock();
+                .get()?;
 
             stmt.execute(
                 "INSERT INTO books (uuid, path, chapter, offset) VALUES (?1, ?2, 0, 0.0)",
@@ -227,10 +230,10 @@ impl Database {
     }
 
     pub fn update_progress(&self, id: String, chapter: usize, offset: f64) -> anyhow::Result<()> {
-        let stmt = CONNECTION
+        let stmt = POOL
             .get()
             .ok_or(anyhow!("Could not get connection"))?
-            .lock();
+            .get()?;
 
         stmt.execute(
             "UPDATE books SET chapter = ?1, offset = ?2 WHERE uuid = ?3",
@@ -241,10 +244,10 @@ impl Database {
     }
 
     pub fn get_books(&self) -> anyhow::Result<Vec<Book>> {
-        let stmt = CONNECTION
+        let stmt = POOL
             .get()
             .ok_or(anyhow!("Could not get connection"))?
-            .lock();
+            .get()?;
 
         let mut stmt = stmt.prepare("SELECT uuid, path, chapter, offset FROM books")?;
 
@@ -263,10 +266,10 @@ impl Database {
     }
 
     pub fn get_book(&self, uuid: String) -> anyhow::Result<Book> {
-        let stmt = CONNECTION
+        let stmt = POOL
             .get()
             .ok_or(anyhow!("Could not get connection"))?
-            .lock();
+            .get()?;
 
         let mut stmt =
             stmt.prepare("SELECT uuid, path, chapter, offset FROM books WHERE uuid = ?1")?;
@@ -285,11 +288,31 @@ impl Database {
         Ok(books.next().ok_or(anyhow!("No such book"))??)
     }
 
-    pub(crate) fn add_synced_book(&self, file: UploadedFile, path: &PathBuf) -> anyhow::Result<()> {
-        let stmt = CONNECTION
+    // Note: Does not delete the file.
+    pub fn delete_books(&self, uuids: Vec<String>) -> anyhow::Result<()> {
+        let connection = POOL
             .get()
             .ok_or(anyhow!("Could not get connection"))?
-            .lock();
+            .get()?;
+
+        connection.execute("BEGIN TRANSACTION", [])?;
+
+        let mut prepared = connection.prepare("DELETE FROM books WHERE uuid = ?1")?;
+
+        for uuid in uuids {
+            prepared.execute([&uuid])?;
+        }
+
+        connection.execute("COMMIT TRANSACTION", [])?;
+
+        Ok(())
+    }
+
+    pub(crate) fn add_synced_book(&self, file: UploadedFile, path: &PathBuf) -> anyhow::Result<()> {
+        let stmt = POOL
+            .get()
+            .ok_or(anyhow!("Could not get connection"))?
+            .get()?;
 
         stmt.execute(
             "INSERT INTO books (uuid, path, chapter, offset) VALUES (?1, ?2, ?3, ?4)",

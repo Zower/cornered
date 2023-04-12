@@ -270,6 +270,24 @@ fn wire_get_book__method__Database_impl(
         },
     )
 }
+fn wire_delete_books__method__Database_impl(
+    port_: MessagePort,
+    that: impl Wire2Api<Database> + UnwindSafe,
+    uuids: impl Wire2Api<Vec<String>> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "delete_books__method__Database",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_that = that.wire2api();
+            let api_uuids = uuids.wire2api();
+            move |task_callback| Database::delete_books(&api_that, api_uuids)
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks

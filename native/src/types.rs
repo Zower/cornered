@@ -167,9 +167,27 @@ pub struct FileResponse {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
-pub struct GithubUser {
-    pub login: String,
+pub struct GithubUserJson {
+    #[serde(rename = "login")]
+    pub display_name: String,
     pub id: u64,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub struct GithubUser {
+    pub display_name: String,
+    pub id: u64,
+    pub is_primary: bool,
+}
+
+impl GithubUser {
+    pub fn from(is_primary: bool, json: GithubUserJson) -> Self {
+        Self {
+            display_name: json.display_name,
+            id: json.id,
+            is_primary,
+        }
+    }
 }
 
 pub struct GoUrlResult {

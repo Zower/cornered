@@ -2,6 +2,16 @@ use super::*;
 // Section: wire functions
 
 #[no_mangle]
+pub extern "C" fn wire_get_users(port_: i64) {
+    wire_get_users_impl(port_)
+}
+
+#[no_mangle]
+pub extern "C" fn wire_get_primary_user(port_: i64) {
+    wire_get_primary_user_impl(port_)
+}
+
+#[no_mangle]
 pub extern "C" fn wire_auth(port_: i64) {
     wire_auth_impl(port_)
 }
@@ -16,7 +26,7 @@ pub extern "C" fn wire_upload_file(
     port_: i64,
     repo: *mut wire_uint_8_list,
     uuid: *mut wire_uint_8_list,
-    user: *mut wire_GithubUser,
+    user: *mut wire_GithubUserJson,
 ) {
     wire_upload_file_impl(port_, repo, uuid, user)
 }
@@ -25,7 +35,7 @@ pub extern "C" fn wire_upload_file(
 pub extern "C" fn wire_update_files(
     port_: i64,
     repo: *mut wire_uint_8_list,
-    user: *mut wire_GithubUser,
+    user: *mut wire_GithubUserJson,
 ) {
     wire_update_files_impl(port_, repo, user)
 }
@@ -48,8 +58,8 @@ pub extern "C" fn new_box_autoadd_device_flow_response_1() -> *mut wire_DeviceFl
 }
 
 #[no_mangle]
-pub extern "C" fn new_box_autoadd_github_user_1() -> *mut wire_GithubUser {
-    support::new_leak_box_ptr(wire_GithubUser::new_with_null_ptr())
+pub extern "C" fn new_box_autoadd_github_user_json_1() -> *mut wire_GithubUserJson {
+    support::new_leak_box_ptr(wire_GithubUserJson::new_with_null_ptr())
 }
 
 #[no_mangle]
@@ -77,10 +87,10 @@ impl Wire2Api<DeviceFlowResponse> for *mut wire_DeviceFlowResponse {
         Wire2Api::<DeviceFlowResponse>::wire2api(*wrap).into()
     }
 }
-impl Wire2Api<GithubUser> for *mut wire_GithubUser {
-    fn wire2api(self) -> GithubUser {
+impl Wire2Api<GithubUserJson> for *mut wire_GithubUserJson {
+    fn wire2api(self) -> GithubUserJson {
         let wrap = unsafe { support::box_from_leak_ptr(self) };
-        Wire2Api::<GithubUser>::wire2api(*wrap).into()
+        Wire2Api::<GithubUserJson>::wire2api(*wrap).into()
     }
 }
 impl Wire2Api<DeviceFlowResponse> for wire_DeviceFlowResponse {
@@ -93,10 +103,10 @@ impl Wire2Api<DeviceFlowResponse> for wire_DeviceFlowResponse {
         }
     }
 }
-impl Wire2Api<GithubUser> for wire_GithubUser {
-    fn wire2api(self) -> GithubUser {
-        GithubUser {
-            login: self.login.wire2api(),
+impl Wire2Api<GithubUserJson> for wire_GithubUserJson {
+    fn wire2api(self) -> GithubUserJson {
+        GithubUserJson {
+            display_name: self.display_name.wire2api(),
             id: self.id.wire2api(),
         }
     }
@@ -123,8 +133,8 @@ pub struct wire_DeviceFlowResponse {
 
 #[repr(C)]
 #[derive(Clone)]
-pub struct wire_GithubUser {
-    login: *mut wire_uint_8_list,
+pub struct wire_GithubUserJson {
+    display_name: *mut wire_uint_8_list,
     id: u64,
 }
 
@@ -164,16 +174,16 @@ impl Default for wire_DeviceFlowResponse {
     }
 }
 
-impl NewWithNullPtr for wire_GithubUser {
+impl NewWithNullPtr for wire_GithubUserJson {
     fn new_with_null_ptr() -> Self {
         Self {
-            login: core::ptr::null_mut(),
+            display_name: core::ptr::null_mut(),
             id: Default::default(),
         }
     }
 }
 
-impl Default for wire_GithubUser {
+impl Default for wire_GithubUserJson {
     fn default() -> Self {
         Self::new_with_null_ptr()
     }

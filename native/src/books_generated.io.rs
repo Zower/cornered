@@ -102,7 +102,25 @@ pub extern "C" fn wire_get_book__method__Database(
     wire_get_book__method__Database_impl(port_, that, uuid)
 }
 
+#[no_mangle]
+pub extern "C" fn wire_delete_books__method__Database(
+    port_: i64,
+    that: *mut wire_Database,
+    uuids: *mut wire_StringList,
+) {
+    wire_delete_books__method__Database_impl(port_, that, uuids)
+}
+
 // Section: allocate functions
+
+#[no_mangle]
+pub extern "C" fn new_StringList_0(len: i32) -> *mut wire_StringList {
+    let wrap = wire_StringList {
+        ptr: support::new_leak_vec_ptr(<*mut wire_uint_8_list>::new_with_null_ptr(), len),
+        len,
+    };
+    support::new_leak_box_ptr(wrap)
+}
 
 #[no_mangle]
 pub extern "C" fn new_box_autoadd_database_0() -> *mut wire_Database {
@@ -136,6 +154,15 @@ impl Wire2Api<String> for *mut wire_uint_8_list {
     fn wire2api(self) -> String {
         let vec: Vec<u8> = self.wire2api();
         String::from_utf8_lossy(&vec).into_owned()
+    }
+}
+impl Wire2Api<Vec<String>> for *mut wire_StringList {
+    fn wire2api(self) -> Vec<String> {
+        let vec = unsafe {
+            let wrap = support::box_from_leak_ptr(self);
+            support::vec_from_leak_ptr(wrap.ptr, wrap.len)
+        };
+        vec.into_iter().map(Wire2Api::wire2api).collect()
     }
 }
 impl Wire2Api<Database> for *mut wire_Database {
@@ -184,6 +211,13 @@ impl Wire2Api<Vec<u8>> for *mut wire_uint_8_list {
 }
 
 // Section: wire structs
+
+#[repr(C)]
+#[derive(Clone)]
+pub struct wire_StringList {
+    ptr: *mut *mut wire_uint_8_list,
+    len: i32,
+}
 
 #[repr(C)]
 #[derive(Clone)]

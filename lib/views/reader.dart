@@ -8,13 +8,15 @@ import 'package:cornered/common/future_handled_builder.dart';
 import 'package:cornered/gen/ffi.dart';
 import 'package:cornered/gen/util_generated.dart';
 import 'package:cornered/smooth_scroll.dart';
+import 'package:cornered/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart' as html;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:html/dom.dart' as dom;
 
 class Reader extends StatefulWidget {
-  const Reader({Key? key, required this.book, required this.db}) : super(key: key);
+  const Reader({Key? key, required this.book, required this.db})
+      : super(key: key);
 
   final Book book;
   final Database db;
@@ -58,6 +60,7 @@ class _ReaderState extends State<Reader> {
   // bool _showIcons = true;
 
   double _offset = 0;
+  final ValueNotifier<double> _offsetNotifier = ValueNotifier(0);
 
   @override
   void initState() {
@@ -69,10 +72,15 @@ class _ReaderState extends State<Reader> {
   }
 
   void _init() async {
-    final document = await booksApi.openDoc(path: widget.book.path, initialChapter: _chapter);
+    await runCatching(() async {
+      final document = await booksApi.openDoc(
+        path: widget.book.path,
+        initialChapter: _chapter,
+      );
 
-    setState(() {
-      _document = document;
+      setState(() {
+        _document = document;
+      });
     });
 
     await _getAndSetContent();
@@ -122,7 +130,8 @@ class _ReaderState extends State<Reader> {
             onSelectionChanged: (selection) {
               final newSelection = selection?.plainText ?? '';
 
-              if (_currentSelection.value.contains(newSelection) && !_currentSelection.value.contains(' ')) {
+              if (_currentSelection.value.contains(newSelection) &&
+                  !_currentSelection.value.contains(' ')) {
                 return;
               }
 
@@ -134,6 +143,7 @@ class _ReaderState extends State<Reader> {
             child: SizedBox.expand(
               child: SmoothScroll(
                 initialOffset: widget.book.position.offset,
+                forceOffsetChangeNotifier: _offsetNotifier,
                 onScrollEnd: (offset, maxScrollExtent) async {
                   await widget.db.updateProgress(
                     id: widget.book.uuid,
@@ -167,16 +177,17 @@ class _ReaderState extends State<Reader> {
                         "h2": html.Style(fontSize: const html.FontSize(32)),
                         "html": html.Style(
                           padding: EdgeInsets.symmetric(
-                            horizontal: (_paddingPercent / 100) * (layout.maxWidth / 2),
+                            horizontal:
+                                (_paddingPercent / 100) * (layout.maxWidth / 2),
                           ),
                         ),
                       },
                       customRender: {
                         "svg": (context, element) {
-                          // debugPrint(context.toString());
-                          // debugPrint(element.toString());
+                          debugPrint('svg, rendering red box');
 
-                          return Container(height: 30, width: 30, color: Colors.red);
+                          return Container(
+                              height: 30, width: 30, color: Colors.red);
                         }
                       },
                       customImageRenders: {
@@ -201,7 +212,8 @@ class _ReaderState extends State<Reader> {
                             future: future,
                             builder: (ctx, AsyncSnapshot<Uint8List> snapshot) {
                               if (snapshot.hasData) {
-                                return Center(child: Image.memory(snapshot.data!));
+                                return Center(
+                                    child: Image.memory(snapshot.data!));
                               }
 
                               return const SizedBox.shrink();
@@ -250,43 +262,57 @@ class _ReaderState extends State<Reader> {
   Future<void> _getAndSetContent() async {
     final content = await _document!.getContent();
 
-    _setContent(content);
+    _setContent(content, offset: widget.book.position.offset);
   }
 
-  void _setContent(ContentBlock content) async {
-    final doc = dom.Document.html('${content.content}\n${content.contentType.when(html: (extraCss) => extraCss)}');
+  void _setContent(ContentBlock content, {double offset = 0}) async {
+    final doc = dom.Document.html(
+        '${content.content}\n${content.contentType.when(html: (extraCss) => extraCss)}');
     setState(() {
       _htmlDocument = doc;
+      _offset = offset;
       _chapter = content.chapter;
     });
+  }
+
+  void _resetOffset() {
+    _offsetNotifier.value = 1;
+    _offsetNotifier.value = 0;
   }
 
   Future<void> _goNext() async {
     final value = await _document!.goNext();
 
     _setContent(value);
+    _resetOffset();
 
-    await widget.db.updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
+    await widget.db
+        .updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
   }
 
   Future<void> _goPrev() async {
     final value = await _document!.goPrev();
 
     _setContent(value);
+    _resetOffset();
 
-    await widget.db.updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
+    await widget.db
+        .updateProgress(id: widget.book.uuid, chapter: _chapter, offset: 0);
   }
 
   Future<void> _goUrl(String url) async {
     // TODO try catch url parse
     final content = await _document!.goUrl(url: Uri.parse(url).path);
 
-    final doc = dom.Document.html('${content.content.content}\n${content.content.contentType.when(html: (extraCss) => extraCss)}');
+    final doc = dom.Document.html(
+        '${content.content.content}\n${content.content.contentType.when(html: (extraCss) => extraCss)}');
     setState(() {
       _chapter = content.chapter;
       _htmlDocument = doc;
       _offset = 0;
     });
+
+    _resetOffset();
   }
 
   List<Widget> _actions() {
@@ -297,44 +323,7 @@ class _ReaderState extends State<Reader> {
       // return IconButton(
       //   onPressed: syncing
       //       ? null
-      //       : () async {
-      //           var id = await Pref.currentUser.value();
-      //           if (id == null) {
-      //             final response = await utilsApi.auth();
-      //
-      //             if (!mounted) return;
-      //
-      //             final fut = utilsApi.poll(ongoing: response);
-      //
-      //             await showDialog<void>(
-      //               context: context,
-      //               barrierDismissible: false,
-      //               builder: (BuildContext context) {
-      //                 fut.then((_) => Navigator.of(context).pop());
-      //
-      //                 return AlertDialog(
-      //                   title: const Text('Code'),
-      //                   content: SingleChildScrollView(
-      //                     child: ListBody(
-      //                       children: [
-      //                         Text('Navigate to ${response.verificationUri}', style: Theme.of(context).textTheme.headlineMedium),
-      //                         const SizedBox(height: 16),
-      //                         SelectableText('userCode: ${response.userCode}'),
-      //                       ],
-      //                     ),
-      //                   ),
-      //                 );
-      //               },
-      //             );
-      //
-      //             final user = await fut;
-      //
-      //             await Pref.currentUser.set(user.id);
-      //             await Pref.currentUserName.set(user.login);
-      //
-      //             id = user.id;
-      //           }
-      //
+      //       : () async {//
       //           final name = (await Pref.currentUserName.value())!;
       //
       //           // TODO try catch
@@ -393,8 +382,11 @@ class _ReaderState extends State<Reader> {
                 children: [
                   _settingItem(
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      title: Center(child: Text('Font size: ${_fontSize.roundToDouble()}')),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 16),
+                      title: Center(
+                          child:
+                              Text('Font size: ${_fontSize.roundToDouble()}')),
                       subtitle: Slider(
                         value: _fontSize.roundToDouble(),
                         max: 35,
@@ -415,8 +407,11 @@ class _ReaderState extends State<Reader> {
                   ),
                   _settingItem(
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      title: Center(child: Text('Padding: ${_paddingPercent.roundToDouble()}%')),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 16),
+                      title: Center(
+                          child: Text(
+                              'Padding: ${_paddingPercent.roundToDouble()}%')),
                       subtitle: Slider(
                         value: _paddingPercent.roundToDouble(),
                         max: 100,
@@ -437,10 +432,12 @@ class _ReaderState extends State<Reader> {
                   ),
                   _settingItem(
                     ListTile(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 16),
                       title: const Center(child: Text('Fonts')),
                       onTap: () async {
-                        final result = await showSearch(context: context, delegate: FontSearch());
+                        final result = await showSearch(
+                            context: context, delegate: FontSearch());
 
                         setState(() {
                           _textStyle = GoogleFonts.asMap()[result!]!;
@@ -478,7 +475,9 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
   DictionarySelectionControls({required this.selection});
 
   @override
-  Widget buildHandle(BuildContext context, TextSelectionHandleType type, double textHeight, [VoidCallback? onTap]) {
+  Widget buildHandle(
+      BuildContext context, TextSelectionHandleType type, double textHeight,
+      [VoidCallback? onTap]) {
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
       case TargetPlatform.android:
@@ -559,14 +558,18 @@ class DictionarySelectionControls extends MaterialTextSelectionControls {
                         color: Colors.black.withOpacity(0.25),
                         spreadRadius: 0,
                         blurRadius: 4,
-                        offset: const Offset(0, 4), // changes position of shadow
+                        offset:
+                            const Offset(0, 4), // changes position of shadow
                       ),
                     ],
                   ),
                   child: FutureHandledBuilder(
                     future: utilsApi.getDefinition(word: selection.value),
-                    loadingBuilder: (context) => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
-                    errorBuilder: (context, error) => Text('Unable to fetch word: $error'),
+                    loadingBuilder: (context) => const SizedBox(
+                        height: 100,
+                        child: Center(child: CircularProgressIndicator())),
+                    errorBuilder: (context, error) =>
+                        Text('Unable to fetch word: $error'),
                     builder: (context, Definitions snapshot) {
                       final meanings = snapshot.meanings
                           .map(

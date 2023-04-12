@@ -6,16 +6,17 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class SmoothScroll extends StatefulWidget {
-  const SmoothScroll({
-    super.key,
-    required this.children,
-    this.onScrollEnd,
-    required this.initialOffset,
-  });
+  const SmoothScroll(
+      {super.key,
+      required this.children,
+      this.onScrollEnd,
+      required this.initialOffset,
+      this.forceOffsetChangeNotifier});
 
   final List<Widget> children;
   final double initialOffset;
   final void Function(double offset, double maxScrollExtent)? onScrollEnd;
+  final ValueNotifier<double>? forceOffsetChangeNotifier;
 
   @override
   State<SmoothScroll> createState() => _SmoothScrollState();
@@ -34,6 +35,10 @@ class _SmoothScrollState extends State<SmoothScroll> {
     super.initState();
 
     _desiredOffset = widget.initialOffset;
+
+    widget.forceOffsetChangeNotifier?.addListener(() {
+      controller.jumpTo(widget.forceOffsetChangeNotifier!.value);
+    });
 
     controller = ScrollController(
       initialScrollOffset: widget.initialOffset,
@@ -89,25 +94,23 @@ class _SmoothScrollState extends State<SmoothScroll> {
 
   Widget _body(BuildContext context) {
     if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-      return Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerSignal: _onPointerSignal,
-        child: ListView(
-          // TODO DONT DO THIS
-          shrinkWrap: true,
-          controller: controller,
-          cacheExtent: double.maxFinite,
-          children: widget.children
-              .map((e) => Listener(
-                    // This is a hack to make it so we control the mouse scroll. The registration needs to be deeper in the tree than the ListView.
-                    onPointerSignal: (event) {
-                      GestureBinding.instance.pointerSignalResolver
-                          .register(event, _onPointerSignal);
-                    },
-                    child: e,
-                  ))
-              .toList(),
-        ),
+      return ListView(
+        // TODO DONT DO THIS
+        shrinkWrap: true,
+        controller: controller,
+        cacheExtent: double.maxFinite,
+        children: widget.children
+            .map(
+              (e) => Listener(
+                // This is a hack to make it so we control the mouse scroll. The registration needs to be deeper in the tree than the ListView.
+                onPointerSignal: (event) {
+                  GestureBinding.instance.pointerSignalResolver
+                      .register(event, _onPointerSignal);
+                },
+                child: e,
+              ),
+            )
+            .toList(),
       );
     }
 

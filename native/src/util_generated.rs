@@ -23,10 +23,31 @@ use crate::types::Definition;
 use crate::types::Definitions;
 use crate::types::DeviceFlowResponse;
 use crate::types::GithubUser;
+use crate::types::GithubUserJson;
 use crate::types::Meaning;
 
 // Section: wire functions
 
+fn wire_get_users_impl(port_: MessagePort) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_users",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || move |task_callback| get_users(),
+    )
+}
+fn wire_get_primary_user_impl(port_: MessagePort) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap(
+        WrapInfo {
+            debug_name: "get_primary_user",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || move |task_callback| get_primary_user(),
+    )
+}
 fn wire_auth_impl(port_: MessagePort) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -54,7 +75,7 @@ fn wire_upload_file_impl(
     port_: MessagePort,
     repo: impl Wire2Api<String> + UnwindSafe,
     uuid: impl Wire2Api<String> + UnwindSafe,
-    user: impl Wire2Api<GithubUser> + UnwindSafe,
+    user: impl Wire2Api<GithubUserJson> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -73,7 +94,7 @@ fn wire_upload_file_impl(
 fn wire_update_files_impl(
     port_: MessagePort,
     repo: impl Wire2Api<String> + UnwindSafe,
-    user: impl Wire2Api<GithubUser> + UnwindSafe,
+    user: impl Wire2Api<GithubUserJson> + UnwindSafe,
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap(
         WrapInfo {
@@ -184,7 +205,12 @@ impl support::IntoDartExceptPrimitive for DeviceFlowResponse {}
 
 impl support::IntoDart for GithubUser {
     fn into_dart(self) -> support::DartAbi {
-        vec![self.login.into_dart(), self.id.into_dart()].into_dart()
+        vec![
+            self.display_name.into_dart(),
+            self.id.into_dart(),
+            self.is_primary.into_dart(),
+        ]
+        .into_dart()
     }
 }
 impl support::IntoDartExceptPrimitive for GithubUser {}

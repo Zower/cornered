@@ -88,6 +88,11 @@ abstract class Books {
       {required Database that, required String uuid, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kGetBookMethodDatabaseConstMeta;
+
+  Future<void> deleteBooksMethodDatabase(
+      {required Database that, required List<String> uuids, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kDeleteBooksMethodDatabaseConstMeta;
 }
 
 class Book {
@@ -154,6 +159,12 @@ class Database {
       bridge.getBookMethodDatabase(
         that: this,
         uuid: uuid,
+      );
+
+  Future<void> deleteBooks({required List<String> uuids, dynamic hint}) =>
+      bridge.deleteBooksMethodDatabase(
+        that: this,
+        uuids: uuids,
       );
 }
 
@@ -547,6 +558,26 @@ class BooksImpl implements Books {
         argNames: ["that", "uuid"],
       );
 
+  Future<void> deleteBooksMethodDatabase(
+      {required Database that, required List<String> uuids, dynamic hint}) {
+    var arg0 = _platform.api2wire_box_autoadd_database(that);
+    var arg1 = _platform.api2wire_StringList(uuids);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner
+          .wire_delete_books__method__Database(port_, arg0, arg1),
+      parseSuccessData: _wire2api_unit,
+      constMeta: kDeleteBooksMethodDatabaseConstMeta,
+      argValues: [that, uuids],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kDeleteBooksMethodDatabaseConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "delete_books__method__Database",
+        argNames: ["that", "uuids"],
+      );
+
   void dispose() {
     _platform.dispose();
   }
@@ -726,6 +757,15 @@ class BooksPlatform extends FlutterRustBridgeBase<BooksWire> {
   @protected
   ffi.Pointer<wire_uint_8_list> api2wire_String(String raw) {
     return api2wire_uint_8_list(utf8.encoder.convert(raw));
+  }
+
+  @protected
+  ffi.Pointer<wire_StringList> api2wire_StringList(List<String> raw) {
+    final ans = inner.new_StringList_0(raw.length);
+    for (var i = 0; i < raw.length; i++) {
+      ans.ref.ptr[i] = api2wire_String(raw[i]);
+    }
+    return ans;
   }
 
   @protected
@@ -1169,6 +1209,42 @@ class BooksWire implements FlutterRustBridgeWireBase {
           void Function(int, ffi.Pointer<wire_Database>,
               ffi.Pointer<wire_uint_8_list>)>();
 
+  void wire_delete_books__method__Database(
+    int port_,
+    ffi.Pointer<wire_Database> that,
+    ffi.Pointer<wire_StringList> uuids,
+  ) {
+    return _wire_delete_books__method__Database(
+      port_,
+      that,
+      uuids,
+    );
+  }
+
+  late final _wire_delete_books__method__DatabasePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(ffi.Int64, ffi.Pointer<wire_Database>,
+                  ffi.Pointer<wire_StringList>)>>(
+      'wire_delete_books__method__Database');
+  late final _wire_delete_books__method__Database =
+      _wire_delete_books__method__DatabasePtr.asFunction<
+          void Function(
+              int, ffi.Pointer<wire_Database>, ffi.Pointer<wire_StringList>)>();
+
+  ffi.Pointer<wire_StringList> new_StringList_0(
+    int len,
+  ) {
+    return _new_StringList_0(
+      len,
+    );
+  }
+
+  late final _new_StringList_0Ptr = _lookup<
+          ffi.NativeFunction<ffi.Pointer<wire_StringList> Function(ffi.Int32)>>(
+      'new_StringList_0');
+  late final _new_StringList_0 = _new_StringList_0Ptr
+      .asFunction<ffi.Pointer<wire_StringList> Function(int)>();
+
   ffi.Pointer<wire_Database> new_box_autoadd_database_0() {
     return _new_box_autoadd_database_0();
   }
@@ -1245,15 +1321,16 @@ class BooksWire implements FlutterRustBridgeWireBase {
       _new_box_autoadd_device_flow_response_1Ptr
           .asFunction<ffi.Pointer<wire_DeviceFlowResponse> Function()>();
 
-  ffi.Pointer<wire_GithubUser> new_box_autoadd_github_user_1() {
-    return _new_box_autoadd_github_user_1();
+  ffi.Pointer<wire_GithubUserJson> new_box_autoadd_github_user_json_1() {
+    return _new_box_autoadd_github_user_json_1();
   }
 
-  late final _new_box_autoadd_github_user_1Ptr =
-      _lookup<ffi.NativeFunction<ffi.Pointer<wire_GithubUser> Function()>>(
-          'new_box_autoadd_github_user_1');
-  late final _new_box_autoadd_github_user_1 = _new_box_autoadd_github_user_1Ptr
-      .asFunction<ffi.Pointer<wire_GithubUser> Function()>();
+  late final _new_box_autoadd_github_user_json_1Ptr =
+      _lookup<ffi.NativeFunction<ffi.Pointer<wire_GithubUserJson> Function()>>(
+          'new_box_autoadd_github_user_json_1');
+  late final _new_box_autoadd_github_user_json_1 =
+      _new_box_autoadd_github_user_json_1Ptr
+          .asFunction<ffi.Pointer<wire_GithubUserJson> Function()>();
 }
 
 class _Dart_Handle extends ffi.Opaque {}
@@ -1276,6 +1353,13 @@ class wire_OpenDocument extends ffi.Struct {
 
 class wire_Database extends ffi.Opaque {}
 
+class wire_StringList extends ffi.Struct {
+  external ffi.Pointer<ffi.Pointer<wire_uint_8_list>> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
 class wire_DeviceFlowResponse extends ffi.Struct {
   external ffi.Pointer<wire_uint_8_list> device_code;
 
@@ -1287,8 +1371,8 @@ class wire_DeviceFlowResponse extends ffi.Struct {
   external int interval;
 }
 
-class wire_GithubUser extends ffi.Struct {
-  external ffi.Pointer<wire_uint_8_list> login;
+class wire_GithubUserJson extends ffi.Struct {
+  external ffi.Pointer<wire_uint_8_list> display_name;
 
   @ffi.Uint64()
   external int id;

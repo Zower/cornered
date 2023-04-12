@@ -9,11 +9,11 @@ final ThemeData brownOrange = FlexThemeData.light(
     blendOnLevel: 10,
     blendOnColors: false,
     useM2StyleDividerInM3: true,
+    drawerWidth: 300,
   ),
   visualDensity: FlexColorScheme.comfortablePlatformDensity,
   useMaterial3: true,
   swapLegacyOnMaterial3: true,
-// To use the playground font, add GoogleFonts package and uncomment
 );
 
 final ThemeData brownOrangeDark = FlexThemeData.dark(
@@ -23,10 +23,9 @@ final ThemeData brownOrangeDark = FlexThemeData.dark(
   subThemesData: const FlexSubThemesData(
     blendOnLevel: 20,
     useM2StyleDividerInM3: true,
+    drawerWidth: 300,
   ),
   visualDensity: FlexColorScheme.comfortablePlatformDensity,
   useMaterial3: true,
   swapLegacyOnMaterial3: true,
-// To use the Playground font, add GoogleFonts package and uncomment
-// fontFamily: GoogleFonts.notoSans().fontFamily,
 );
