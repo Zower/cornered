@@ -15,7 +15,7 @@ class Settings extends StatefulWidget {
 class _SettingsState extends State<Settings> {
   @override
   Widget build(BuildContext context) {
-    final x = 3;
+    const x = 3;
 
     return CommonPage(
       title: "Settings $x 13 test",
