@@ -306,7 +306,7 @@ packages:
       name: flutter_rust_bridge
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.72.1"
+    version: "1.72.2"
   flutter_svg:
     dependency: transitive
     description:
