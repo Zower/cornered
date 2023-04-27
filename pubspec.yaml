@@ -38,7 +38,7 @@ dependencies:
   flutter_rust_bridge: ^1.75.1
   meta: ^1.8.0
   flutter_html: ^3.0.0-alpha.6
-  google_fonts: ^4.0.3
+  google_fonts: ^4.0.4
   file_picker: ^5.2.11
   permission_handler: ^10.2.0
   path_provider: ^2.0.13
