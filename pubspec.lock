@@ -564,10 +564,10 @@ packages:
     dependency: "direct main"
     description:
       name: permission_handler
-      sha256: "33c6a1253d1f95fd06fa74b65b7ba907ae9811f9d5c1d3150e51417d04b8d6a8"
+      sha256: "97c39c9cfded9f6d7fa897e31386fd45d438c6ef39f070f761a31f55208f09ff"
       url: "https://pub.dev"
     source: hosted
-    version: "10.2.0"
+    version: "10.2.1"
   permission_handler_android:
     dependency: transitive
     description:
