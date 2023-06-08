@@ -43,7 +43,7 @@ dependencies:
   permission_handler: ^10.2.1
   path_provider: ^2.0.15
   collection: ^1.17.0
-  shared_preferences: ^2.1.1
+  shared_preferences: ^2.1.2
   freezed_annotation: ^2.2.0
   page_transition: ^2.0.9
   html: ^0.15.3
