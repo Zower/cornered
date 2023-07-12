@@ -44,7 +44,7 @@ dependencies:
   path_provider: ^2.0.15
   collection: ^1.17.0
   shared_preferences: ^2.1.2
-  freezed_annotation: ^2.2.0
+  freezed_annotation: ^2.4.1
   page_transition: ^2.0.9
   html: ^0.15.4
   flex_color_scheme: ^7.0.5
