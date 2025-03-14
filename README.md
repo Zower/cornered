@@ -1,7 +1,5 @@
 # cornered
-
-This repository serves as a template for Flutter projects calling into native Rust
-libraries via `flutter_rust_bridge`.
+An ePUB reader written in Flutter.
 
 ## Getting Started
 
@@ -43,19 +41,3 @@ If you would like to generate boilerplate for using `flutter_rust_bridge` in you
 check out the [`flutter_rust_bridge` brick](https://brickhub.dev/bricks/flutter_rust_bridge/)
 for more details.
 
-## Disclaimer
-
-This template is not affiliated with flutter_rust_bridge. Please file issues and PRs related to the template here,
-not flutter_rust_bridge.
-
-## License
-
-Copyright 2022 Viet Dinh.
-
-This template is licensed under either of
-- [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) ([LICENSE-APACHE](LICENSE-APACHE))
-- [MIT license](https://opensource.org/licenses/MIT) ([LICENSE-MIT](LICENSE-MIT))
-
-at your option.
-
-The [SPDX](https://spdx.dev/) license identifier for this project is `MIT OR Apache-2.0`.
